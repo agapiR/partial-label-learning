@@ -1,0 +1,10 @@
+
+
+*.zip
+*.out
+*.txt
+*.pyc
+__pycache__/
+datacache/
+.idea/
+.ipynb_checkpoints/
