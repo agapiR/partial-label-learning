@@ -45,40 +45,31 @@ class RealIdxDataset(Dataset):
 def generate_real_dataloader(dataname, datadir, batch_size, seed):
     datapath = os.path.join(datadir, "{}.mat".format(dataname))
     dt = loadmat(datapath)
-    X = dt['data']
-    partial_y = dt['partial_target']
-    y = dt['target']
 
-    if type(partial_y) is np.ndarray:
-        partial_y = partial_y.transpose()
-    else:
-        partial_y = partial_y.toarray().transpose()
-    if type(y) is np.ndarray:
-        y = y.transpose()
-    else:
-        y = y.toarray().transpose()
+    X = dt['features']
+    partial_y = dt['p_labels']
+    y = dt['logitlabels']
 
     X = np.float32(X)
     partial_y = np.float32(partial_y)
-    y = np.float32(y)
+    y = np.float32(np.argmax(y, axis=1))
+    
 
     print("random_state is {}".format(seed))
-    train_X, test_X, train_y, test_y, train_partial_y, test_partial_y = train_test_split(
-        X,
-        y,
-        partial_y,
-        train_size=0.8,
-        test_size=0.2,
-        stratify=y,
-        random_state=seed)
-    train_X, valid_X, train_y, valid_y, train_partial_y, valid_partial_y = train_test_split(
-        train_X,
-        train_y,
-        train_partial_y,
-        train_size=7 / 8,
-        test_size=1 / 8,
-        stratify=train_y,
-        random_state=seed)
+    train_X, test_X, train_y, test_y, train_partial_y, test_partial_y = train_test_split(X,
+                                                                                        y,
+                                                                                        partial_y,
+                                                                                        train_size=0.8,
+                                                                                        test_size=0.2,
+                                                                                        stratify=y,
+                                                                                        random_state=seed)
+    train_X, valid_X, train_y, valid_y, train_partial_y, valid_partial_y = train_test_split(train_X,
+                                                                                            train_y,
+                                                                                            train_partial_y,
+                                                                                            train_size=7 / 8,
+                                                                                            test_size=1 / 8,
+                                                                                            stratify=train_y,
+                                                                                            random_state=seed)
 
     scaler = StandardScaler()
     train_X = scaler.fit_transform(train_X)
@@ -94,7 +85,8 @@ def generate_real_dataloader(dataname, datadir, batch_size, seed):
         shuffle=False,
         num_workers=0)
 
-    train_dataset = RealIdxDataset(train_X, train_partial_y)
+    # train_dataset = RealIdxDataset(train_X, train_partial_y)
+    train_dataset = gen_index_dataset(train_X, train_partial_y, train_y)
     train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
                                                batch_size=batch_size,
                                                shuffle=True,
@@ -116,7 +108,7 @@ def generate_real_dataloader(dataname, datadir, batch_size, seed):
         num_workers=0)
 
     num_features = X.shape[1]
-    num_classes = y.shape[1]
+    num_classes = partial_y.shape[1]
 
     return (train_loader, train_eval_loader, valid_eval_loader,
             test_eval_loader, train_partial_y, num_features, num_classes)
@@ -211,7 +203,7 @@ def prepare_cv_datasets(dataname, batch_size):
         ordinary_train_dataset = dsets.MNIST(root='~/datasets/mnist',
                                              train=True,
                                              transform=transforms.ToTensor(),
-                                             download=False)
+                                             download=True)
         test_dataset = dsets.MNIST(root='~/datasets/mnist',
                                    train=False,
                                    transform=transforms.ToTensor())
@@ -248,7 +240,7 @@ def prepare_cv_datasets(dataname, batch_size):
             root='~/datasets/cifar10',
             train=True,
             transform=train_transform,
-            download=False)
+            download=True)
         test_dataset = dsets.CIFAR10(root='~/datasets/cifar10',
                                      train=False,
                                      transform=test_transform)
