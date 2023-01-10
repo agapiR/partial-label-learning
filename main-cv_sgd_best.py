@@ -9,7 +9,7 @@ from models.model_resnet import Resnet
 from utils.utils_data import prepare_cv_datasets
 from utils.utils_data import prepare_train_loaders_for_uniform_cv_candidate_labels
 from utils.utils_algo import accuracy_check, confidence_update, confidence_update_lw
-from utils.utils_loss import rc_loss, cc_loss, lws_loss
+from utils.utils_loss import rc_loss, cc_loss, lws_loss, log_prp_Loss as prp_loss
 
 parser = argparse.ArgumentParser()
 
@@ -30,7 +30,7 @@ parser.add_argument('-lo',
                     help='specify a loss function',
                     default='rc',
                     type=str,
-                    choices=['rc', 'cc', 'lws'],
+                    choices=['rc', 'cc', 'lws', 'prp'],
                     required=False)
 parser.add_argument('-lw',
                     help='lw sigmoid loss weight',
@@ -76,7 +76,7 @@ args = parser.parse_args()
 save_dir = "./results_cv_best"
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
-if args.lo in ['rc', 'cc']:
+if args.lo in ['rc', 'cc', 'prp']:
     save_name = "Res-sgd_{}_{}_{}_{}_{}_{}_{}_{}_{}_{}_{}.csv".format(
         args.ds, args.pr, args.mo, args.lo, args.lr, args.wd, args.ldr,
         args.lds, args.ep, args.bs, args.seed)
@@ -117,6 +117,9 @@ elif args.lo == 'lws':
     confidence = torch.ones(n, c) / c
     confidence = confidence.to(device)
     loss_fn = lws_loss
+elif args.lo == 'prp':
+    # softmax = torch.nn.Softmax(dim=1)
+    loss_fn = prp_loss()
 
 if args.mo == 'mlp':
     model = Mlp(n_inputs=dim, n_outputs=K)
@@ -177,6 +180,9 @@ for epoch in range(args.ep):
         elif args.lo == 'lws':
             average_loss, _, _ = loss_fn(outputs, Y.float(), confidence, index,
                                          args.lw, args.lw0, None)
+        elif args.lo == 'prp':
+            # average_loss = loss_fn(softmax(outputs), Y.float())
+            average_loss = loss_fn(outputs, Y.float())
         average_loss.backward()
         optimizer.step()
         if args.lo == 'rc':
