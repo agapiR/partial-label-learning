@@ -1,5 +1,43 @@
 import torch
 import torch.nn.functional as F
+from utils.utils_loss import nll_loss
+
+def prob_check(loader, model, device):
+    nll = nll_loss()
+    with torch.no_grad():
+        total, num_samples = 0, 0
+        for images, labels, true_labels, index in loader:
+            images, targets, index = images.to(device), labels.to(device), index.to(device)
+            outputs = model(images)
+            nll_loss_val, total_prob = nll(outputs, targets.float())
+            total += total_prob.item()
+            num_samples += true_labels.size(0)
+    return total / num_samples
+
+def ratio_check(loader, model, device, idx=1):
+    with torch.no_grad():
+        ratios = []
+        for images, labels, true_labels, index in loader:
+            # print(index)
+            if idx in index: # for the selected sample
+                idx_in_batch = ((index == idx).nonzero(as_tuple=True)[0]).item()
+                # print(idx)
+                # print(index)
+                # print(idx_in_batch)
+                # print(images[idx_in_batch])
+                # print(labels[idx_in_batch])
+                images, targets, index = images.to(device), labels.to(device), index.to(device)
+                outputs = model(images)
+                probs = targets * F.softmax(outputs, dim=1)
+                probs_idx = probs[idx_in_batch].squeeze()
+                ps = probs_idx[torch.nonzero(targets[idx_in_batch].squeeze())].squeeze()
+                # print("monitor probs: ", ps)
+                acceptable_num = ps.size(0)
+                # print("#acceptable",acceptable_num)
+                for i in range(acceptable_num):
+                    for j in range(i+1, acceptable_num):
+                        ratios.append(ps[i].item() / (ps[j].item() + 1e-8))
+    return ratios
 
 
 def accuracy_check(loader, model, device):
