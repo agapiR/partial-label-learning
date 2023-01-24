@@ -8,7 +8,10 @@ from models.model_cnn import Cnn
 from models.model_resnet import Resnet
 from utils.utils_data import generate_real_dataloader
 from utils.utils_algo import accuracy_check, confidence_update, confidence_update_lw, prob_check, ratio_check
-from utils.utils_loss import rc_loss, cc_loss, lws_loss, log_prp_Loss as prp_loss, h_prp_Loss as h_prp_loss
+from utils.utils_loss import (rc_loss, cc_loss, lws_loss, 
+                              log_prp_Loss as prp_loss, 
+                              h_prp_Loss as h_prp_loss, 
+                              joint_prp_on_logits as ll_loss)
 
 parser = argparse.ArgumentParser()
 
@@ -29,7 +32,7 @@ parser.add_argument('-lo',
                     help='specify a loss function',
                     default='rc',
                     type=str,
-                    choices=['rc', 'cc', 'lws', 'prp', 'hprp'],
+                    choices=['rc', 'cc', 'lws', 'prp', 'hprp', 'll'],
                     required=False)
 parser.add_argument('-lw',
                     help='lw sigmoid loss weight',
@@ -94,6 +97,10 @@ elif args.lo in ['hprp']:
     save_name = "Res-sgd_{}_{}_{}_{}_{}_{}_{}_{}_{}_{}_{}.csv".format(
         args.ds, args.mo, args.lo, args.lr, args.wd, args.ldr,
         args.lds, args.ep, args.bs, args.seed, args.alpha)
+elif args.lo in ['ll']:
+    save_name = "Res-sgd_{}_{}_{}_{}_{}_{}_{}_{}_{}_{}.csv".format(
+        args.ds, args.mo, args.lo, args.lr, args.wd, args.ldr,
+        args.lds, args.ep, args.bs, args.seed)
 elif args.lo in ['lws']:
     save_name = "Res-sgd_{}_{}_{}_{}_{}_{}_{}_{}_{}_{}_{}_{}.csv".format(
         args.ds, args.mo, args.lo, args.lw0, args.lw, args.lr, args.wd,
@@ -146,6 +153,10 @@ elif args.lo == 'prp':
     loss_fn = prp_loss()
 elif args.lo == 'hprp':
     loss_fn = h_prp_loss(h=args.alpha)
+elif args.lo == 'll':
+    loss_fn = ll_loss()
+
+
 
 if args.mo == 'mlp':
     model = Mlp(n_inputs=dim, n_outputs=K)
@@ -208,6 +219,8 @@ for epoch in range(args.ep):
                                          args.lw, args.lw0, None)
         elif args.lo == 'prp' or args.lo == 'hprp':
             # average_loss = loss_fn(softmax(outputs), Y.float())
+            average_loss = loss_fn(outputs, Y.float())
+        elif args.lo == 'll':
             average_loss = loss_fn(outputs, Y.float())
 
         average_loss.backward()

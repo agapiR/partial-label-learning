@@ -4,6 +4,39 @@ import torch.nn.functional as F
 EPS=1e-5
 logEPS=torch.log(torch.tensor(EPS)).item()
 
+
+class joint_prp_on_logits(torch.nn.Module):
+    def __init__(self):
+        super(joint_prp_on_logits, self).__init__()
+ 
+    def forward(self, inputs, targets):
+        device = inputs.device
+
+        custom_lr_pos = -0.005
+        custom_lr_neg = -0.005
+        with torch.no_grad():
+            _, n = inputs.shape
+            k = targets.sum(1)
+            pos_grad = custom_lr_pos * (-1)
+            neg_grad = custom_lr_neg * k / (n - k)
+
+        # compute the positive loss
+        pos_logits = targets*inputs         # (batch_size * label_num)
+        pos_logits_sum = pos_logits.sum(1)  # (batch_size)
+        loss_p = (-1)*pos_grad*pos_logits_sum
+
+        # compute the negative loss
+        neg_logits = (1-targets)*inputs     # (batch_size * label_num)
+        neg_logits_sum = neg_logits.sum(1)  # (batch_size)
+        loss_n = (-1)*neg_grad*neg_logits_sum
+
+        # compute loss
+        loss = loss_p + loss_n
+        loss = torch.mean(loss)
+        
+        return loss
+
+
 class h_prp_Loss(torch.nn.Module):
     def __init__(self, h=1):
         super(h_prp_Loss, self).__init__()
