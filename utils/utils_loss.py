@@ -108,6 +108,35 @@ class log_prp_Loss(torch.nn.Module):
         
         return loss
 
+class bi_prp_loss(torch.nn.Module):
+    def __init__(self):
+        super(bi_prp_loss, self).__init__()
+ 
+    def forward(self, inputs, targets, debug=True):
+
+
+        device = inputs.device
+        input_sm = F.softmax(inputs, dim=1)
+
+        # monitor logits
+        if debug:
+            logits = targets*inputs
+            print("avg logit value:", torch.mean(logits).detach())
+            print("sum of allowed probs", (input_sm * targets).sum(dim=1).mean().detach())
+
+        
+        pos_logits = inputs * targets
+        pos_loss = (-1 * pos_logits).sum(dim=1)
+
+        neg_logits = inputs * (1-targets)
+        k = targets.sum(1, keepdims=True)
+        k_neg = (1-targets).sum(1, keepdims=True)
+        neg_weight = (k/(k_neg + EPS)).detach()
+        neg_loss = (neg_weight * neg_logits).sum(dim=1)
+
+        loss = (neg_loss + pos_loss).mean()
+        
+        return loss
 
 class nll_loss(torch.nn.Module):
     def __init__(self):
