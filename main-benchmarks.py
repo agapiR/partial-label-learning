@@ -12,7 +12,7 @@ from utils.utils_loss import (rc_loss, cc_loss, lws_loss,
                               log_prp_Loss as prp_loss, 
                               h_prp_Loss as h_prp_loss, 
                               joint_prp_on_logits as ll_loss,
-                              bi_prp_loss)
+                              bi_prp_loss, bi_prp_nll_loss, nll_loss)
 parser = argparse.ArgumentParser()
 
 parser.add_argument('-ds',
@@ -32,7 +32,7 @@ parser.add_argument('-lo',
                     help='specify a loss function',
                     default='rc',
                     type=str,
-                    choices=['rc', 'cc', 'lws', 'prp', 'hprp', 'll', 'bi_prp'],
+                    choices=['rc', 'cc', 'lws', 'prp', 'hprp', 'll', 'bi_prp', 'nll', 'bi_prp_nll'],
                     required=False)
 parser.add_argument('-lw',
                     help='lw sigmoid loss weight',
@@ -89,7 +89,7 @@ args = parser.parse_args()
 save_dir = "./results_cv_best"
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
-if args.lo in ['rc', 'cc', 'prp', 'bi_prp']:
+if args.lo in ['rc', 'cc', 'prp', 'bi_prp', 'bi_prp_nll', 'nll']:
     save_name = "Res-sgd_{}_{}_{}_{}_{}_{}_{}_{}_{}_{}.csv".format(
         args.ds, args.mo, args.lo, args.lr, args.wd, args.ldr,
         args.lds, args.ep, args.bs, args.seed)
@@ -134,6 +134,7 @@ device = torch.device("cuda:" +
 eval_loader, test_loader, partialY, dim, K) = generate_real_dataloader(args.ds, './data/realworld/', args.bs, 42)
 
 train_givenY = partialY
+train_givenY = torch.tensor(train_givenY)
 
 if args.lo == 'rc':
     tempY = train_givenY.sum(dim=1).unsqueeze(1).repeat(
@@ -157,6 +158,10 @@ elif args.lo == 'll':
     loss_fn = ll_loss()
 elif args.lo == 'bi_prp':
     loss_fn = bi_prp_loss()
+elif args.lo == 'bi_prp_nll':
+    loss_fn = bi_prp_nll_loss()
+elif args.lo == 'nll':
+    loss_fn = nll_loss()
 
 if args.mo == 'mlp':
     model = Mlp(n_inputs=dim, n_outputs=K)
@@ -217,11 +222,13 @@ for epoch in range(args.ep):
         elif args.lo == 'lws':
             average_loss, _, _ = loss_fn(outputs, Y.float(), confidence, index,
                                          args.lw, args.lw0, None)
-        elif args.lo in ['prp', 'hprp', 'bi_prp']:
+        elif args.lo in ['prp', 'hprp', 'bi_prp', 'bi_prp_nll']:
             # average_loss = loss_fn(softmax(outputs), Y.float())
             average_loss = loss_fn(outputs, Y.float())
         elif args.lo == 'll':
             average_loss = loss_fn(outputs, Y.float())
+        elif args.lo == 'nll':
+            average_loss, _ = loss_fn(outputs, Y.float())
 
         average_loss.backward()
         optimizer.step()
