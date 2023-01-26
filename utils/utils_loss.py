@@ -105,7 +105,7 @@ class log_prp_Loss(torch.nn.Module):
             loss = loss*multiplicities.sum(1)
 
         # input specific coefficient
-        coefficient = 1.0 - probs.sum(dim=1)
+        coefficient = (1.0 - probs.sum(dim=1))
         loss = coefficient.detach() * loss
 
 
@@ -225,7 +225,7 @@ def rc_loss(outputs, confidence, index):
     return average_loss
 
 
-def lws_loss(outputs, partialY, confidence, index, lw_weight, lw_weight0, epoch_ratio, debug=True):
+def lws_loss(outputs, partialY, confidence, index, lw_weight, lw_weight0, epoch_ratio, debug=False):
     device = outputs.device
 
     # monitor logits

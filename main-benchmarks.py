@@ -7,6 +7,8 @@ from models.model_mlp import Mlp
 from models.model_cnn import Cnn
 from models.model_resnet import Resnet
 from utils.utils_data import generate_real_dataloader
+from utils.utils_data import prepare_cv_datasets
+from utils.utils_data import prepare_train_loaders_for_uniform_cv_candidate_labels
 from utils.utils_algo import accuracy_check, confidence_update, confidence_update_lw, prob_check, ratio_check
 from utils.utils_loss import (rc_loss, cc_loss, lws_loss, 
                               log_prp_Loss as prp_loss, 
@@ -130,11 +132,20 @@ device = torch.device("cuda:" +
 # (train_loader, train_eval_loader, valid_eval_loader,
 # test_eval_loader, train_partial_y, num_features, num_classes)
 
-(partial_matrix_train_loader, train_loader, 
-eval_loader, test_loader, partialY, dim, K) = generate_real_dataloader(args.ds, './data/realworld/', args.bs, 42)
+if args.ds in ['birdac', 'lost']:
+    (partial_matrix_train_loader, train_loader, eval_loader, test_loader, partialY, dim, K) = generate_real_dataloader(args.ds, './data/realworld/', args.bs, 42)
+    train_givenY = partialY
+    train_givenY = torch.tensor(train_givenY)
 
-train_givenY = partialY
-train_givenY = torch.tensor(train_givenY)
+elif args.ds in ['mnist', 'kmnist', 'fashion', 'cifar10']:
+    (full_train_loader, train_loader, test_loader, ordinary_train_dataset, test_dataset, K) = prepare_cv_datasets(dataname=args.ds, batch_size=args.bs)
+    (partial_matrix_train_loader, train_data, train_givenY, dim) = prepare_train_loaders_for_uniform_cv_candidate_labels(
+        dataname=args.ds,
+        full_train_loader=full_train_loader,
+        batch_size=args.bs,
+        partial_type=args.pr)
+
+
 
 if args.lo == 'rc':
     tempY = train_givenY.sum(dim=1).unsqueeze(1).repeat(
@@ -179,15 +190,14 @@ elif args.mo == "resnet":
 model = model.to(device)
 print(model)
 
-optimizer = torch.optim.SGD(model.parameters(),
-                            lr=args.lr,
-                            weight_decay=args.wd,
-                            momentum=0.9)
+optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.wd, momentum=0.9)
+# optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.wd)
 
 train_accuracy = accuracy_check(loader=train_loader, model=model, device=device)
 test_accuracy = accuracy_check(loader=test_loader, model=model, device=device)
 train_pos_prob = prob_check(loader=partial_matrix_train_loader, model=model, device=device)
-train_ratios = ratio_check(loader=partial_matrix_train_loader, model=model, device=device)
+# train_ratios = ratio_check(loader=partial_matrix_train_loader, model=model, device=device)
+train_ratios = 0.0 # TODO
 
 print('Epoch: 0. Tr Acc: {:.6f}. Te Acc: {:.6f}. Tr Pos Prob {:.6f}. Tr Ratios {}.'.format(
         0, train_accuracy, test_accuracy, train_pos_prob, np.around(train_ratios,6)))
@@ -241,7 +251,8 @@ for epoch in range(args.ep):
     train_accuracy = accuracy_check(loader=train_loader, model=model, device=device)
     test_accuracy = accuracy_check(loader=test_loader, model=model, device=device)
     train_pos_prob = prob_check(loader=partial_matrix_train_loader, model=model, device=device)
-    train_ratios = ratio_check(loader=partial_matrix_train_loader, model=model, device=device)
+    # train_ratios = ratio_check(loader=partial_matrix_train_loader, model=model, device=device)
+    train_ratios = 0.0 # TODO
 
     print('Epoch: {}. Tr Acc: {:.6f}. Te Acc: {:.6f}. Tr Pos Prob {:.6f}. Tr Ratios {}.'.format(
         epoch + 1, train_accuracy, test_accuracy, train_pos_prob, np.around(train_ratios,6)))

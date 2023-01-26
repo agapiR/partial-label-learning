@@ -183,6 +183,20 @@ def generate_uniform_cv_candidate_labels(dataname, train_labels, partial_type):
         [q_2, q_3, 0, 0, 0, q_3, q_2, q_1, 1, q_1],
         [q_1, q_2, q_3, 0, 0, 0, q_3, q_2, q_1, 1],
         ]   
+    elif partial_type == "10":
+        p_1, p_2, p_3, p_4 = 0.9, 0.8, 0.7, 0.6
+        transition_matrix = [
+        [1,   p_1,  p_2,  p_2,  p_2,  p_3,  p_3,  p_4,  p_1,  p_1],
+        [p_1,   1,  p_1,  p_2,  p_2,  p_2,  p_3,  p_3,  p_4,  p_1],
+        [p_1, p_1,    1,  p_1,  p_2,  p_2,  p_2,  p_3,  p_3,  p_4],
+        [p_4, p_1,  p_1,    1,  p_1,  p_2,  p_2,  p_2,  p_3,  p_3],
+        [p_3, p_4,  p_1,  p_1,    1,  p_1,  p_2,  p_2,  p_2,  p_3],
+        [p_3, p_3,  p_4,  p_1,  p_1,    1,  p_1,  p_2,  p_2,  p_2],
+        [p_2, p_3,  p_3,  p_4,  p_1,  p_1,    1,  p_1,  p_2,  p_2],
+        [p_2, p_2,  p_3,  p_3,  p_4,  p_1,  p_1,    1,  p_1,  p_2],
+        [p_2, p_2,  p_2,  p_3,  p_3,  p_4,  p_1,  p_1,  1,    p_1],
+        [p_1, p_2,  p_2,  p_2,  p_3,  p_3,  p_4,  p_1,  p_1,    1],
+        ]
     transition_matrix = np.array(transition_matrix)    
 
     random_n = np.random.uniform(0, 1, size=(n, K))
@@ -211,7 +225,7 @@ def prepare_cv_datasets(dataname, batch_size):
         ordinary_train_dataset = dsets.KMNIST(root='~/datasets/kmnist',
                                               train=True,
                                               transform=transforms.ToTensor(),
-                                              download=False)
+                                              download=True)
         test_dataset = dsets.KMNIST(root='~/datasets/kmnist',
                                     train=False,
                                     transform=transforms.ToTensor())
@@ -220,7 +234,7 @@ def prepare_cv_datasets(dataname, batch_size):
             root='~/datasets/fashion_mnist',
             train=True,
             transform=transforms.ToTensor(),
-            download=False)
+            download=True)
         test_dataset = dsets.FashionMNIST(root='~/datasets/fashion_mnist',
                                           train=False,
                                           transform=transforms.ToTensor())
