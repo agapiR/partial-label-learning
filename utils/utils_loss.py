@@ -142,7 +142,7 @@ class bi_prp_loss(torch.nn.Module):
 
         # input specific coefficient
         coefficient = 1.0 - (input_sm * targets).sum(dim=1)
-        coefficient = torch.maximum(torch.tensor(0.0), coefficient - 0.3)
+        # coefficient = torch.maximum(torch.tensor(0.0), coefficient - 0.3)
         loss = coefficient.detach() * loss
 
         loss = loss.mean()
@@ -178,7 +178,7 @@ class bi_prp_nll_loss(torch.nn.Module):
 
         # input specific coefficient
         coefficient = 1.0 - pos_probs.sum(dim=1)
-        coefficient = torch.maximum(torch.tensor(0.0), coefficient - 0.3)
+        # coefficient = torch.maximum(torch.tensor(0.0), coefficient - 0.3)
         bi_prp_loss = coefficient.detach() * bi_prp_loss
 
 
@@ -186,7 +186,7 @@ class bi_prp_nll_loss(torch.nn.Module):
         nll_loss = - probs.sum(dim=1)
         nll_weight = pos_probs.sum(dim=1) ** 1
         nll_weight = nll_weight.detach()
-        loss = nll_weight * 10000 * nll_loss + (1-nll_weight) * bi_prp_loss
+        loss = nll_weight * nll_loss + (1-nll_weight) * bi_prp_loss
 
         loss = loss.mean()
         return loss
@@ -202,14 +202,25 @@ class nll_loss(torch.nn.Module):
         probs = targets*input_sm
         sumprobs = probs.sum(1)
 
-        invprob = torch.maximum(torch.FloatTensor([EPS]).expand_as(sumprobs).to(device), 1.0 - sumprobs)
+        # invprob = torch.maximum(torch.FloatTensor([EPS]).expand_as(sumprobs).to(device), 1.0 - sumprobs)
 
-        log_n = torch.log(invprob)
-        loss = torch.mean(log_n)
+        # log_n = torch.log(invprob)
+        # loss = torch.mean(log_n)
+        loss = - (torch.log(sumprobs)).mean()
         total_probs = torch.sum(sumprobs)
         
         return loss, total_probs
 
+class democracy_loss(torch.nn.Module):
+    def __init__(self):
+        super(democracy_loss, self).__init__()
+ 
+    def forward(self, inputs, targets):
+        device = inputs.device
+        logprobs = F.log_softmax(inputs, dim=1)
+        loss = -(logprobs * targets).sum(dim=1)
+        loss = loss.mean()
+        return loss
 
 def cc_loss(outputs, partialY):
     sm_outputs = F.softmax(outputs, dim=1)

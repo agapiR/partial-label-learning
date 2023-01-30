@@ -14,7 +14,7 @@ from utils.utils_loss import (rc_loss, cc_loss, lws_loss,
                               log_prp_Loss as prp_loss, 
                               h_prp_Loss as h_prp_loss, 
                               joint_prp_on_logits as ll_loss,
-                              bi_prp_loss, bi_prp_nll_loss, nll_loss)
+                              bi_prp_loss, bi_prp_nll_loss, nll_loss, democracy_loss)
 parser = argparse.ArgumentParser()
 
 parser.add_argument('-ds',
@@ -34,7 +34,7 @@ parser.add_argument('-lo',
                     help='specify a loss function',
                     default='rc',
                     type=str,
-                    choices=['rc', 'cc', 'lws', 'prp', 'hprp', 'll', 'bi_prp', 'nll', 'bi_prp_nll'],
+                    choices=['rc', 'cc', 'lws', 'prp', 'hprp', 'll', 'bi_prp', 'nll', 'bi_prp_nll', 'democracy'],
                     required=False)
 parser.add_argument('-lw',
                     help='lw sigmoid loss weight',
@@ -91,7 +91,7 @@ args = parser.parse_args()
 save_dir = "./results_cv_best"
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
-if args.lo in ['rc', 'cc', 'prp', 'bi_prp', 'bi_prp_nll', 'nll']:
+if args.lo in ['rc', 'cc', 'prp', 'bi_prp', 'bi_prp_nll', 'nll', 'democracy']:
     save_name = "Res-sgd_{}_{}_{}_{}_{}_{}_{}_{}_{}_{}.csv".format(
         args.ds, args.mo, args.lo, args.lr, args.wd, args.ldr,
         args.lds, args.ep, args.bs, args.seed)
@@ -173,6 +173,8 @@ elif args.lo == 'bi_prp_nll':
     loss_fn = bi_prp_nll_loss()
 elif args.lo == 'nll':
     loss_fn = nll_loss()
+elif args.lo == 'democracy':
+    loss_fn = democracy_loss()
 
 if args.mo == 'mlp':
     model = Mlp(n_inputs=dim, n_outputs=K)

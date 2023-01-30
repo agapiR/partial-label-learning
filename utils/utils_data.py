@@ -9,6 +9,8 @@ from scipy.io import loadmat
 from scipy.special import comb
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
+import re
+
 from utils.gen_index_dataset import gen_index_dataset
 
 
@@ -197,7 +199,15 @@ def generate_uniform_cv_candidate_labels(dataname, train_labels, partial_type):
         [p_2, p_2,  p_2,  p_3,  p_3,  p_4,  p_1,  p_1,  1,    p_1],
         [p_1, p_2,  p_2,  p_2,  p_3,  p_3,  p_4,  p_1,  p_1,    1],
         ]
-    transition_matrix = np.array(transition_matrix)    
+    else:
+        match = re.match("uniform_(.*)", partial_type)
+        if match:
+            p = float(match.groups()[0])
+            transition_matrix = np.ones((10,10)) * p
+            for i in range(10):
+                transition_matrix[i,i] = 1.0
+                
+    transition_matrix = np.array(transition_matrix)
 
     random_n = np.random.uniform(0, 1, size=(n, K))
 
