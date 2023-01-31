@@ -1,5 +1,6 @@
 import os
 import numpy as np
+import random
 import torch
 import torch.utils.data
 from torch.utils.data import Dataset
@@ -7,8 +8,11 @@ import torchvision.transforms as transforms
 import torchvision.datasets as dsets
 from scipy.io import loadmat
 from scipy.special import comb
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, normalize
 from sklearn.model_selection import train_test_split
+from sklearn.cluster import KMeans
+
+
 import re
 
 from utils.gen_index_dataset import gen_index_dataset
@@ -351,6 +355,78 @@ def prepare_train_loaders_for_uniform_cv_candidate_labels(
             labels
         ) + 1  # K is number of classes, full_train_loader is full batch
     partialY = generate_uniform_cv_candidate_labels(data, labels, partial_type)
+    partial_matrix_dataset = gen_index_dataset(data, partialY.float(),
+                                               partialY.float())
+    partial_matrix_train_loader = torch.utils.data.DataLoader(
+        dataset=partial_matrix_dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=0)
+    dim = int(data.reshape(-1).shape[0] / data.shape[0])
+    return partial_matrix_train_loader, data, partialY, dim
+
+"""
+First attempt for clustering-based Partial Label Generation
+"""
+def generate_cluster_based_candidate_labels(data, train_labels):
+    if torch.min(train_labels) > 1:
+        raise RuntimeError('testError')
+    elif torch.min(train_labels) == 1:
+        train_labels = train_labels - 1
+
+    K = torch.max(train_labels) - torch.min(train_labels) + 1
+    assert K == 10    
+    n = train_labels.shape[0]
+
+    partialY = torch.zeros(n, K)
+    partialY[torch.arange(n), train_labels] = 1.0
+
+    # Clustering:
+    _,c,dim1,dim2 = data.shape
+    flattened_data = data.reshape((n, c*dim1*dim2))
+    X = flattened_data.numpy()
+    num_clusters = K
+    kmeans = KMeans(n_clusters=num_clusters, random_state=0, n_init=1).fit(X)
+
+    sample_size = int(n*0.01) # 1% 
+    sample = random.sample(list(range(n)), sample_size)	
+    confusion_labels = np.eye(K)
+    for i,cluster_i in enumerate(kmeans.labels_[sample]):
+        for j,cluster_j in enumerate(kmeans.labels_):
+            if cluster_i==cluster_j:
+                true_label_i = train_labels[i].item()
+                true_label_j = train_labels[j].item()
+                if true_label_i!=true_label_j:
+                    confusion_labels[true_label_i, true_label_j] += 1
+                    confusion_labels[true_label_j, true_label_i] += 1
+
+    # normalize to get probs
+    confusion_labels = normalize(confusion_labels, axis=1, norm='l1')
+    np.fill_diagonal(confusion_labels, 1.0)
+    print("Ambiguity degree: ", confusion_labels[confusion_labels<1.0].max())
+
+    transition_matrix = confusion_labels
+
+    random_n = np.random.uniform(0, 1, size=(n, K))
+
+    for j in range(n):  # for each instance
+        for jj in range(K): # for each class 
+            if jj == train_labels[j]: # except true class
+                continue
+            if random_n[j, jj] < transition_matrix[train_labels[j], jj]:
+                partialY[j, jj] = 1.0
+
+    print("Finish Generating Candidate Label Sets!\n")
+    return partialY
+
+
+def prepare_train_loaders_for_cluster_based_candidate_labels(
+        dataname, full_train_loader, batch_size, partial_type):
+    for i, (data, labels) in enumerate(full_train_loader):
+        K = torch.max(
+            labels
+        ) + 1  # K is number of classes, full_train_loader is full batch
+    partialY = generate_cluster_based_candidate_labels(data, labels)
     partial_matrix_dataset = gen_index_dataset(data, partialY.float(),
                                                partialY.float())
     partial_matrix_train_loader = torch.utils.data.DataLoader(

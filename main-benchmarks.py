@@ -8,13 +8,18 @@ from models.model_cnn import Cnn
 from models.model_resnet import Resnet
 from utils.utils_data import generate_real_dataloader
 from utils.utils_data import prepare_cv_datasets
-from utils.utils_data import prepare_train_loaders_for_uniform_cv_candidate_labels
+from utils.utils_data import prepare_train_loaders_for_uniform_cv_candidate_labels, prepare_train_loaders_for_cluster_based_candidate_labels
 from utils.utils_algo import accuracy_check, confidence_update, confidence_update_lw, prob_check, ratio_check
 from utils.utils_loss import (rc_loss, cc_loss, lws_loss, 
                               log_prp_Loss as prp_loss, 
                               h_prp_Loss as h_prp_loss, 
                               joint_prp_on_logits as ll_loss,
                               bi_prp_loss, bi_prp_nll_loss, nll_loss, democracy_loss)
+
+# TODO: read as argument
+CLUSTER_PLL = True
+
+
 parser = argparse.ArgumentParser()
 
 parser.add_argument('-ds',
@@ -81,12 +86,6 @@ parser.add_argument('-alpha',
                     required=False)
 
 args = parser.parse_args()
-# TODO: implement custom gradient
-# custom_grad = True
-# if custom_grad:
-#     # args.lo = 'none'
-#     beta = 0
-#     my_grad = beta_grad(beta)
 
 save_dir = "./results_cv_best"
 if not os.path.exists(save_dir):
@@ -139,7 +138,14 @@ if args.ds in ['birdac', 'lost']:
 
 elif args.ds in ['mnist', 'kmnist', 'fashion', 'cifar10']:
     (full_train_loader, train_loader, test_loader, ordinary_train_dataset, test_dataset, K) = prepare_cv_datasets(dataname=args.ds, batch_size=args.bs)
-    (partial_matrix_train_loader, train_data, train_givenY, dim) = prepare_train_loaders_for_uniform_cv_candidate_labels(
+    if CLUSTER_PLL:
+        (partial_matrix_train_loader, train_data, train_givenY, dim) = prepare_train_loaders_for_cluster_based_candidate_labels(
+        dataname=args.ds,
+        full_train_loader=full_train_loader,
+        batch_size=args.bs,
+        partial_type=args.pr)
+    else:
+        (partial_matrix_train_loader, train_data, train_givenY, dim) = prepare_train_loaders_for_uniform_cv_candidate_labels(
         dataname=args.ds,
         full_train_loader=full_train_loader,
         batch_size=args.bs,
