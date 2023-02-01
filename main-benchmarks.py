@@ -2,6 +2,7 @@ import os
 import argparse
 import numpy as np
 import torch
+import sys
 from models.model_linear import Linearnet
 from models.model_mlp import Mlp
 from models.model_cnn import Cnn
@@ -14,7 +15,7 @@ from utils.utils_loss import (rc_loss, cc_loss, lws_loss,
                               log_prp_Loss as prp_loss, 
                               h_prp_Loss as h_prp_loss, 
                               joint_prp_on_logits as ll_loss,
-                              bi_prp_loss, bi_prp_nll_loss, nll_loss, democracy_loss)
+                              bi_prp_loss, bi_prp2_loss, bi_prp_nll_loss, nll_loss, democracy_loss)
 parser = argparse.ArgumentParser()
 
 parser.add_argument('-ds',
@@ -34,7 +35,6 @@ parser.add_argument('-lo',
                     help='specify a loss function',
                     default='rc',
                     type=str,
-                    choices=['rc', 'cc', 'lws', 'prp', 'hprp', 'll', 'bi_prp', 'nll', 'bi_prp_nll', 'democracy'],
                     required=False)
 parser.add_argument('-lw',
                     help='lw sigmoid loss weight',
@@ -91,11 +91,8 @@ args = parser.parse_args()
 save_dir = "./results_cv_best"
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
-if args.lo in ['rc', 'cc', 'prp', 'bi_prp', 'bi_prp_nll', 'nll', 'democracy']:
-    save_name = "Res-sgd_{}_{}_{}_{}_{}_{}_{}_{}_{}_{}.csv".format(
-        args.ds, args.mo, args.lo, args.lr, args.wd, args.ldr,
-        args.lds, args.ep, args.bs, args.seed)
-elif args.lo in ['hprp']:
+
+if args.lo in ['hprp']:
     save_name = "Res-sgd_{}_{}_{}_{}_{}_{}_{}_{}_{}_{}_{}.csv".format(
         args.ds, args.mo, args.lo, args.lr, args.wd, args.ldr,
         args.lds, args.ep, args.bs, args.seed, args.alpha)
@@ -107,6 +104,10 @@ elif args.lo in ['lws']:
     save_name = "Res-sgd_{}_{}_{}_{}_{}_{}_{}_{}_{}_{}_{}_{}.csv".format(
         args.ds, args.mo, args.lo, args.lw0, args.lw, args.lr, args.wd,
         args.ldr, args.lds, args.ep, args.bs, args.seed)
+else:
+    save_name = "Res-sgd_{}_{}_{}_{}_{}_{}_{}_{}_{}_{}.csv".format(
+        args.ds, args.mo, args.lo, args.lr, args.wd, args.ldr,
+        args.lds, args.ep, args.bs, args.seed)
 save_path = os.path.join(save_dir, save_name)
 with open(save_path, 'w') as f:
     f.writelines("epoch,train_acc,test_acc,train_pos_prob\n") # TODO: if file already exists, erase previous, DONE
@@ -137,15 +138,13 @@ if args.ds in ['birdac', 'lost']:
     train_givenY = partialY
     train_givenY = torch.tensor(train_givenY)
 
-elif args.ds in ['mnist', 'kmnist', 'fashion', 'cifar10']:
+elif args.ds in ['mnist', 'kmnist', 'fashion', 'cifar10', 'cifar100']:
     (full_train_loader, train_loader, test_loader, ordinary_train_dataset, test_dataset, K) = prepare_cv_datasets(dataname=args.ds, batch_size=args.bs)
     (partial_matrix_train_loader, train_data, train_givenY, dim) = prepare_train_loaders_for_uniform_cv_candidate_labels(
         dataname=args.ds,
         full_train_loader=full_train_loader,
         batch_size=args.bs,
         partial_type=args.pr)
-
-
 
 if args.lo == 'rc':
     tempY = train_givenY.sum(dim=1).unsqueeze(1).repeat(
@@ -169,6 +168,8 @@ elif args.lo == 'll':
     loss_fn = ll_loss()
 elif args.lo == 'bi_prp':
     loss_fn = bi_prp_loss()
+elif args.lo == 'bi_prp2':
+    loss_fn = bi_prp2_loss()
 elif args.lo == 'bi_prp_nll':
     loss_fn = bi_prp_nll_loss()
 elif args.lo == 'nll':
@@ -234,13 +235,10 @@ for epoch in range(args.ep):
         elif args.lo == 'lws':
             average_loss, _, _ = loss_fn(outputs, Y.float(), confidence, index,
                                          args.lw, args.lw0, None)
-        elif args.lo in ['prp', 'hprp', 'bi_prp', 'bi_prp_nll']:
-            # average_loss = loss_fn(softmax(outputs), Y.float())
-            average_loss = loss_fn(outputs, Y.float())
-        elif args.lo == 'll':
-            average_loss = loss_fn(outputs, Y.float())
         elif args.lo == 'nll':
             average_loss, _ = loss_fn(outputs, Y.float())
+        else:
+            average_loss = loss_fn(outputs, Y.float())
 
         average_loss.backward()
         optimizer.step()
@@ -258,9 +256,10 @@ for epoch in range(args.ep):
 
     print('Epoch: {}. Tr Acc: {:.6f}. Te Acc: {:.6f}. Tr Pos Prob {:.6f}. Tr Ratios {}.'.format(
         epoch + 1, train_accuracy, test_accuracy, train_pos_prob, np.around(train_ratios,6)))
+    sys.stdout.flush()
     with open(save_path, "a") as f:
         f.writelines("{},{:.6f},{:.6f},{:.6f}\n".format(epoch + 1, train_accuracy,
-                                                 test_accuracy, train_pos_prob))
+                                                        test_accuracy, train_pos_prob))
 
     if epoch >= (args.ep - 10):
         test_acc_list.extend([test_accuracy])

@@ -124,13 +124,13 @@ def generate_uniform_cv_candidate_labels(dataname, train_labels, partial_type):
         train_labels = train_labels - 1
 
     K = torch.max(train_labels) - torch.min(train_labels) + 1
-    assert K == 10    
     n = train_labels.shape[0]
 
     partialY = torch.zeros(n, K)
     partialY[torch.arange(n), train_labels] = 1.0
 
     if partial_type == "01":
+        assert K == 10    
         transition_matrix = [
         [1, 0.5, 0, 0, 0, 0, 0, 0, 0, 0],
         [0, 1, 0.5, 0, 0, 0, 0, 0, 0, 0],
@@ -144,6 +144,7 @@ def generate_uniform_cv_candidate_labels(dataname, train_labels, partial_type):
         [0.5, 0, 0, 0, 0, 0, 0, 0, 0, 1],
         ]
     elif partial_type == "02":
+        assert K == 10    
         q_adj = 0.3
         transition_matrix = [
         [1, q_adj, 0, 0, 0, 0, 0, 0, 0, q_adj],
@@ -158,6 +159,7 @@ def generate_uniform_cv_candidate_labels(dataname, train_labels, partial_type):
         [q_adj, 0, 0, 0, 0, 0, 0, 0, q_adj, 1],
         ]      
     elif partial_type == "03":
+        assert K == 10    
         p_1, p_2, p_3, p_4 = 0.2, 0.8, 0.4, 0.2
         transition_matrix = [
         [1,   p_1,  p_2,  p_2,  p_2,  p_3,  p_3,  p_4,  p_1,  p_1],
@@ -172,6 +174,7 @@ def generate_uniform_cv_candidate_labels(dataname, train_labels, partial_type):
         [p_1, p_2,  p_2,  p_2,  p_3,  p_3,  p_4,  p_1,  p_1,    1],
         ]
     elif partial_type == "04":
+        assert K == 10    
         q_1, q_2, q_3  = 0.5, 0.3, 0.1
         transition_matrix =  [
         [1, q_1, q_2, q_3, 0, 0, 0, q_3, q_2, q_1],
@@ -186,6 +189,7 @@ def generate_uniform_cv_candidate_labels(dataname, train_labels, partial_type):
         [q_1, q_2, q_3, 0, 0, 0, q_3, q_2, q_1, 1],
         ]   
     elif partial_type == "10":
+        assert K == 10    
         p_1, p_2, p_3, p_4 = 0.9, 0.8, 0.7, 0.6
         transition_matrix = [
         [1,   p_1,  p_2,  p_2,  p_2,  p_3,  p_3,  p_4,  p_1,  p_1],
@@ -203,9 +207,17 @@ def generate_uniform_cv_candidate_labels(dataname, train_labels, partial_type):
         match = re.match("uniform_(.*)", partial_type)
         if match:
             p = float(match.groups()[0])
-            transition_matrix = np.ones((10,10)) * p
-            for i in range(10):
+            transition_matrix = np.ones((K,K)) * p
+            for i in range(K):
                 transition_matrix[i,i] = 1.0
+        else:
+            match = re.match("random_(.*)", partial_type)
+            if match:
+                p = float(match.groups()[0])
+                transition_matrix = np.random.rand(K,K) * p
+                for i in range(10):
+                    transition_matrix[i,i] = 1.0
+                
                 
     transition_matrix = np.array(transition_matrix)
 
@@ -268,6 +280,26 @@ def prepare_cv_datasets(dataname, batch_size):
         test_dataset = dsets.CIFAR10(root='~/datasets/cifar10',
                                      train=False,
                                      transform=test_transform)
+    elif dataname == 'cifar100':
+        train_transform = transforms.Compose([
+            transforms.ToTensor(
+            ),  # transforms.RandomHorizontalFlip(), transforms.RandomCrop(32,4),
+            transforms.Normalize((0.4914, 0.4822, 0.4465),
+                                 (0.247, 0.243, 0.261))
+        ])
+        test_transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.4914, 0.4822, 0.4465),
+                                 (0.247, 0.243, 0.261))
+        ])
+        ordinary_train_dataset = dsets.CIFAR100(
+            root='~/datasets/cifar100',
+            train=True,
+            transform=train_transform,
+            download=True)
+        test_dataset = dsets.CIFAR100(root='~/datasets/cifar100',
+                                     train=False,
+                                     transform=test_transform)
 
     train_loader = torch.utils.data.DataLoader(dataset=ordinary_train_dataset,
                                                batch_size=batch_size,
@@ -282,7 +314,10 @@ def prepare_cv_datasets(dataname, batch_size):
         batch_size=len(ordinary_train_dataset.data),
         shuffle=True,
         num_workers=0)
-    num_classes = 10
+    if dataname == 'cifar100':
+        num_classes = 100
+    else:
+        num_classes = 10
     return (full_train_loader, train_loader, test_loader,
             ordinary_train_dataset, test_dataset, num_classes)
 
@@ -312,6 +347,17 @@ def prepare_cv_datasets_hyper(dataname, batch_size):
                                  (0.247, 0.243, 0.261))
         ])
         ordinary_train_dataset = dsets.CIFAR10(root='~/datasets/cifar10',
+                                               train=True,
+                                               transform=train_transform,
+                                               download=True)
+    elif dataname == 'cifar100':
+        train_transform = transforms.Compose([
+            transforms.ToTensor(
+            ),  # transforms.RandomHorizontalFlip(), transforms.RandomCrop(32,4),
+            transforms.Normalize((0.4914, 0.4822, 0.4465),
+                                 (0.247, 0.243, 0.261))
+        ])
+        ordinary_train_dataset = dsets.CIFAR100(root='~/datasets/cifar100',
                                                train=True,
                                                transform=train_transform,
                                                download=True)

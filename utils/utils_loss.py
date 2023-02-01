@@ -148,6 +148,30 @@ class bi_prp_loss(torch.nn.Module):
         loss = loss.mean()
         return loss
 
+class bi_prp2_loss(torch.nn.Module):
+    def __init__(self):
+        super(bi_prp2_loss, self).__init__()
+ 
+    def forward(self, inputs, targets):
+        logprobs = F.log_softmax(inputs, dim=1)
+
+        pos_logprobs = logprobs * targets
+        neg_logprobs = logprobs * (1-targets)
+        
+        k = targets.sum(1, keepdims=True)
+        k_neg = (1-targets).sum(1, keepdims=True)
+        k_neg = torch.maximum(torch.tensor(1.0), k_neg)
+
+        loss = (-1.0 * pos_logprobs + k / k_neg * neg_logprobs).sum(dim=1)
+
+        # input specific coefficient
+        probs = F.softmax(inputs, dim=1)
+        coefficient = (probs * (1-targets)).sum(dim=1)
+        loss = coefficient.detach() * loss
+
+        loss = loss.mean()
+        return loss
+    
 class bi_prp_nll_loss(torch.nn.Module):
     def __init__(self):
         super(bi_prp_nll_loss, self).__init__()
