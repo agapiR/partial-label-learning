@@ -18,7 +18,7 @@ from utils.utils_loss import (rc_loss, cc_loss, lws_loss,
                               bi_prp_loss, bi_prp2_loss, bi_prp_nll_loss, nll_loss, democracy_loss)
 
 # TODO: read as argument
-CLUSTER_PLL = True
+CLUSTER_PLL = False
 
 
 parser = argparse.ArgumentParser()

@@ -221,6 +221,18 @@ def generate_uniform_cv_candidate_labels(dataname, train_labels, partial_type):
                 transition_matrix = np.random.rand(K,K) * p
                 for i in range(10):
                     transition_matrix[i,i] = 1.0
+            else:
+                match = re.match("huniform_(.*)", partial_type)
+                if match:
+                    assert dataname == "cifar100", dataname
+                    p = float(match.groups()[0])
+                    transition_matrix = np.ones((K,K)) * p
+                    for i in range(K):
+                        transition_matrix[i,i] = 1.0
+                    labels = np.arange(K)
+                    coarse_labels = cifar100_sparse2coarse(labels)
+                    different_coarse_label = np.expand_dims(coarse_labels,0) != np.expand_dims(coarse_labels,1)
+                    transition_matrix[different_coarse_label] = 0.0                
                 
                 
     transition_matrix = np.array(transition_matrix)
@@ -400,7 +412,7 @@ def prepare_train_loaders_for_uniform_cv_candidate_labels(
         K = torch.max(
             labels
         ) + 1  # K is number of classes, full_train_loader is full batch
-    partialY = generate_uniform_cv_candidate_labels(data, labels, partial_type)
+    partialY = generate_uniform_cv_candidate_labels(dataname, labels, partial_type)
     partial_matrix_dataset = gen_index_dataset(data, partialY.float(),
                                                partialY.float())
     partial_matrix_train_loader = torch.utils.data.DataLoader(
@@ -482,3 +494,23 @@ def prepare_train_loaders_for_cluster_based_candidate_labels(
         num_workers=0)
     dim = int(data.reshape(-1).shape[0] / data.shape[0])
     return partial_matrix_train_loader, data, partialY, dim
+
+
+def cifar100_sparse2coarse(targets):
+    """Convert Pytorch CIFAR100 sparse targets to coarse targets.
+    Usage:
+        trainset = torchvision.datasets.CIFAR100(path)
+        trainset.targets = sparse2coarse(trainset.targets)
+    """
+    # copied from https://github.com/ryanchankh/cifar100coarse/blob/master/sparse2coarse.py
+    coarse_labels = np.array([ 4,  1, 14,  8,  0,  6,  7,  7, 18,  3,  
+                               3, 14,  9, 18,  7, 11,  3,  9,  7, 11,
+                               6, 11,  5, 10,  7,  6, 13, 15,  3, 15,  
+                               0, 11,  1, 10, 12, 14, 16,  9, 11,  5, 
+                               5, 19,  8,  8, 15, 13, 14, 17, 18, 10, 
+                               16, 4, 17,  4,  2,  0, 17,  4, 18, 17, 
+                               10, 3,  2, 12, 12, 16, 12,  1,  9, 19,  
+                               2, 10,  0,  1, 16, 12,  9, 13, 15, 13, 
+                              16, 19,  2,  4,  6, 19,  5,  5,  8, 19, 
+                              18,  1,  2, 15,  6,  0, 17,  8, 14, 13])
+    return coarse_labels[targets]
