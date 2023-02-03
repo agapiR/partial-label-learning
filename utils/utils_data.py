@@ -222,18 +222,25 @@ def generate_uniform_cv_candidate_labels(dataname, train_labels, partial_type):
                 for i in range(10):
                     transition_matrix[i,i] = 1.0
             else:
-                match = re.match("huniform_(.*)", partial_type)
+                match = re.match("h([0-9]*)uniform_(.*)", partial_type)
                 if match:
                     assert dataname == "cifar100", dataname
-                    p = float(match.groups()[0])
+                    p = float(match.groups()[1])
                     transition_matrix = np.ones((K,K)) * p
                     for i in range(K):
                         transition_matrix[i,i] = 1.0
                     labels = np.arange(K)
-                    coarse_labels = cifar100_sparse2coarse(labels)
+
+                    num_groups = match.groups()[0]
+                    if num_groups == "":
+                        num_groups = 20
+                    else:
+                        num_groups = int(num_groups)
+                        
+                    coarse_labels = cifar100_sparse2coarse(labels, num_groups)
                     different_coarse_label = np.expand_dims(coarse_labels,0) != np.expand_dims(coarse_labels,1)
                     transition_matrix[different_coarse_label] = 0.0                
-                
+                    
                 
     transition_matrix = np.array(transition_matrix)
 
@@ -496,7 +503,7 @@ def prepare_train_loaders_for_cluster_based_candidate_labels(
     return partial_matrix_train_loader, data, partialY, dim
 
 
-def cifar100_sparse2coarse(targets):
+def cifar100_sparse2coarse(targets, groups):
     """Convert Pytorch CIFAR100 sparse targets to coarse targets.
     Usage:
         trainset = torchvision.datasets.CIFAR100(path)
@@ -513,4 +520,36 @@ def cifar100_sparse2coarse(targets):
                                2, 10,  0,  1, 16, 12,  9, 13, 15, 13, 
                               16, 19,  2,  4,  6, 19,  5,  5,  8, 19, 
                               18,  1,  2, 15,  6,  0, 17,  8, 14, 13])
-    return coarse_labels[targets]
+    new_targets = coarse_labels[targets]
+    if groups == 20:
+        return new_targets
+    else:
+        if groups==10:
+            coarser_labels = [0, 0, 1, 2, 1, 2, 3, 7, 4, 3, 8, 4, 5, 7, 5, 6, 6, 8, 9, 9]
+        elif groups==5:
+            coarser_labels = [1, 1, 0, 1, 0, 1, 4, 3, 2, 4, 0, 2, 2, 3, 2, 3, 3, 0, 4, 4]
+        elif groups==4:
+            coarser_labels = [0, 0, 1, 2, 1, 2, 2, 0, 3, 1, 1, 3, 3, 0, 3, 0, 3, 1, 2, 2]
+        coarser_labels = np.array(coarser_labels)
+        return coarser_labels[new_targets]
+        
+# 0: aquatic mammals
+# 1: fish	
+# 2: flowers
+# 3: food containers
+# 4: fruit and vegetables
+# 5: household electrical devices
+# 6: household furniture	
+# 7: insects
+# 8: large carnivores
+# 9: large man-made outdoor things
+# 10:large natural outdoor scenes
+# 11:large omnivores and herbivores	
+# 12:medium-sized mammals
+# 13:non-insect invertebrates
+# 14:people
+# 15:reptiles	
+# 16:small mammals	
+# 17:trees	
+# 18:vehicles 1
+# 19:vehicles 2
