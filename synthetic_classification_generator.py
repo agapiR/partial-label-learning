@@ -3,6 +3,20 @@ Generate samples of synthetic data sets.
 
 Code from: https://github.com/scikit-learn/scikit-learn/blob/7db5b6a98/sklearn/datasets/_samples_generator.py
 Modified by: Agapi Rissaki
+
+Generate a random n-class classification problem.
+
+This initially creates clusters of points normally distributed (std=1) about vertices 
+of an n_informative-dimensional hypercube with sides of length 2*class_sep and assigns 
+an equal number of clusters to each class. It introduces interdependence between these 
+features and adds various types of further noise to the data.
+
+Without shuffling, X horizontally stacks features in the following order: 
+the primary n_informative features, followed by n_redundant linear combinations 
+of the informative features, followed by n_repeated duplicates, drawn randomly with 
+replacement from the informative and redundant features. The remaining features are 
+filled with random noise. Thus, without shuffling, all useful features are contained 
+in the columns X[:, :n_informative + n_redundant + n_repeated].
 """
 
 # Authors: B. Thirion, G. Varoquaux, A. Gramfort, V. Michel, O. Grisel,

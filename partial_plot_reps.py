@@ -52,7 +52,7 @@ for prefix in result.keys():
         for model in d2.keys():
             print("\n", prefix, dataset, model)
             d3 = d2[model]
-            outfile = "plots/{}_{}_{}_{}-reps.png".format(prefix, dataset, model, max_rep)
+            outfile = "plots/{}_{}-0.2_{}_{}-reps.png".format(prefix, dataset, model, max_rep)
             for i,loss in enumerate(d3.keys()):
                 d4 = d3[loss]
                 partial_rates = d4.keys()

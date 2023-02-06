@@ -147,7 +147,7 @@ elif args.ds in ['mnist', 'kmnist', 'fashion', 'cifar10', 'cifar100']:
         full_train_loader=full_train_loader,
         batch_size=args.bs,
         partial_type=args.pr)
-elif args.ds in ['synthetic']:
+elif args.ds.startswith('synthetic'):
     (partial_matrix_train_loader, train_loader, eval_loader, test_loader, partialY, dim, K) = generate_synthetic_hypercube_dataloader(args.prt, args.bs, 42)
     train_givenY = partialY
     train_givenY = torch.tensor(train_givenY)
