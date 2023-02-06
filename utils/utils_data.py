@@ -11,6 +11,9 @@ from scipy.special import comb
 from sklearn.preprocessing import StandardScaler, normalize
 from sklearn.model_selection import train_test_split
 from sklearn.cluster import KMeans
+from sklearn.metrics.pairwise import cosine_distances as dist
+from synthetic_classification_generator import make_classification
+
 
 
 import re
@@ -553,3 +556,102 @@ def cifar100_sparse2coarse(targets, groups):
 # 17:trees	
 # 18:vehicles 1
 # 19:vehicles 2
+
+## Synthetic Hypercube Dataset PLL generation
+def generate_synthetic_hypercube_dataloader(partial_rate, batch_size, seed, num_classes=10,
+                                                                            num_samples = 1000,
+                                                                            feature_dim = 150):
+
+    ## Generate Samples
+
+    # n_features = informative + redundant + repeated + random/useless
+
+    X, y, centroids = make_classification(n_samples=num_samples,
+                                            n_features=feature_dim, 
+                                            n_informative=feature_dim, # all features are informative
+                                            n_redundant=0,
+                                            n_repeated=0,
+                                            n_classes=num_classes,
+                                            n_clusters_per_class=1, # each class is associated with a single cluster
+                                            flip_y=0.01,
+                                            class_sep=1.0,          # default 1.0
+                                            hypercube=True,
+                                            shift=0.0,
+                                            scale=1.0,
+                                            shuffle=False,
+                                            random_state=seed,
+                                            return_centroids=True)
+
+    partial_y = np.zeros((num_samples, num_classes))
+    partial_y[np.arange(y.size), y] = 1
+
+    ## Generate Partial Labels
+    num_distractors = int(partial_rate*num_classes)
+    sample_centroid_distances = dist(X, Y=centroids)
+    for x in range(num_samples):
+        distractor_weights = sample_centroid_distances[x]
+        num_partial_labels = random.randint(1, num_distractors+1)
+        partial_y[x, np.argsort(distractor_weights)[0:num_partial_labels]] = 1
+    
+    ## Create Dataloaders
+    X = np.float32(X)
+    y = np.float32(y)
+    partial_y = np.float32(partial_y)
+
+    print("random_state is {}".format(seed))
+    train_X, test_X, train_y, test_y, train_partial_y, test_partial_y = train_test_split(X,
+                                                                                        y,
+                                                                                        partial_y,
+                                                                                        train_size=0.8,
+                                                                                        test_size=0.2,
+                                                                                        stratify=y,
+                                                                                        random_state=seed)
+    train_X, valid_X, train_y, valid_y, train_partial_y, valid_partial_y = train_test_split(train_X,
+                                                                                            train_y,
+                                                                                            train_partial_y,
+                                                                                            train_size=7 / 8,
+                                                                                            test_size=1 / 8,
+                                                                                            stratify=train_y,
+                                                                                            random_state=seed)
+
+    scaler = StandardScaler()
+    train_X = scaler.fit_transform(train_X)
+    valid_X = scaler.transform(valid_X)
+    test_X = scaler.transform(test_X)
+
+    print(train_X.shape[0], valid_X.shape[0], test_X.shape[0])
+
+    ordinary_train_dataset = RealDataset(train_X, train_y)
+    train_eval_loader = torch.utils.data.DataLoader(
+        dataset=ordinary_train_dataset,
+        batch_size=len(ordinary_train_dataset),
+        shuffle=False,
+        num_workers=0)
+
+    # train_dataset = RealIdxDataset(train_X, train_partial_y)
+    train_dataset = gen_index_dataset(train_X, train_partial_y, train_y)
+    train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
+                                               batch_size=batch_size,
+                                               shuffle=True,
+                                               drop_last=True,
+                                               num_workers=0)
+
+    ordinary_valid_dataset = RealDataset(valid_X, valid_y)
+    valid_eval_loader = torch.utils.data.DataLoader(
+        dataset=ordinary_valid_dataset,
+        batch_size=len(ordinary_valid_dataset),
+        shuffle=False,
+        num_workers=0)
+
+    ordinary_test_dataset = RealDataset(test_X, test_y)
+    test_eval_loader = torch.utils.data.DataLoader(
+        dataset=ordinary_test_dataset,
+        batch_size=len(ordinary_test_dataset),
+        shuffle=False,
+        num_workers=0)
+
+    num_features = X.shape[1]
+    num_classes = partial_y.shape[1]
+
+    return (train_loader, train_eval_loader, valid_eval_loader,
+            test_eval_loader, train_partial_y, num_features, num_classes)

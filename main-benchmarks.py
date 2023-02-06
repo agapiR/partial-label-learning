@@ -7,7 +7,7 @@ from models.model_linear import Linearnet
 from models.model_mlp import Mlp
 from models.model_cnn import Cnn
 from models.model_resnet import Resnet
-from utils.utils_data import generate_real_dataloader
+from utils.utils_data import generate_real_dataloader, generate_synthetic_hypercube_dataloader
 from utils.utils_data import prepare_cv_datasets
 from utils.utils_data import prepare_train_loaders_for_uniform_cv_candidate_labels, prepare_train_loaders_for_cluster_based_candidate_labels
 from utils.utils_algo import accuracy_check, confidence_update, confidence_update_lw, prob_check, ratio_check
@@ -84,10 +84,20 @@ parser.add_argument('-alpha',
                     default=1.0, # 1 is equivalent to prp
                     type=float,
                     required=False)
+parser.add_argument('-prt',
+                    help='partial rate.',
+                    default=0.1,
+                    type=float,
+                    required=False)
+parser.add_argument('-res',
+                    help='result directory.',
+                    default="./results_cv_best",
+                    type=str,
+                    required=False)
 
 args = parser.parse_args()
 
-save_dir = "./results_cv_best"
+save_dir = args.res
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 
@@ -118,20 +128,6 @@ torch.cuda.manual_seed_all(args.seed)
 device = torch.device("cuda:" +
                       args.gpu if torch.cuda.is_available() else "cpu")
 
-## TODO: Replace the prepare_cv_datasets with loading benchmark datasets
-# (full_train_loader, train_loader, test_loader, ordinary_train_dataset,
-#  test_dataset, K) = prepare_cv_datasets(dataname=args.ds, batch_size=args.bs)
- 
-# (partial_matrix_train_loader, train_data, train_givenY,
-#  dim) = prepare_train_loaders_for_uniform_cv_candidate_labels(
-#      dataname=args.ds,
-#      full_train_loader=full_train_loader,
-#      batch_size=args.bs,
-#      partial_type=args.pr)
-
-# (train_loader, train_eval_loader, valid_eval_loader,
-# test_eval_loader, train_partial_y, num_features, num_classes)
-
 if args.ds in ['birdac', 'lost']:
     (partial_matrix_train_loader, train_loader, eval_loader, test_loader, partialY, dim, K) = generate_real_dataloader(args.ds, './data/realworld/', args.bs, 42)
     train_givenY = partialY
@@ -151,6 +147,10 @@ elif args.ds in ['mnist', 'kmnist', 'fashion', 'cifar10', 'cifar100']:
         full_train_loader=full_train_loader,
         batch_size=args.bs,
         partial_type=args.pr)
+elif args.ds in ['synthetic']:
+    (partial_matrix_train_loader, train_loader, eval_loader, test_loader, partialY, dim, K) = generate_synthetic_hypercube_dataloader(args.prt, args.bs, 42)
+    train_givenY = partialY
+    train_givenY = torch.tensor(train_givenY)
 
 if args.lo == 'rc':
     tempY = train_givenY.sum(dim=1).unsqueeze(1).repeat(
