@@ -560,7 +560,7 @@ def cifar100_sparse2coarse(targets, groups):
 ## Synthetic Hypercube Dataset PLL generation
 def generate_synthetic_hypercube_dataloader(partial_rate, batch_size, seed, num_classes=10,
                                                                             num_samples = 1000,
-                                                                            feature_dim = 150):
+                                                                            feature_dim = 5):
 
     ## Generate Samples
 
@@ -589,9 +589,12 @@ def generate_synthetic_hypercube_dataloader(partial_rate, batch_size, seed, num_
     num_distractors = int(partial_rate*num_classes)
     sample_centroid_distances = dist(X, Y=centroids)
     for x in range(num_samples):
-        distractor_weights = sample_centroid_distances[x]
+        x_true_label = y[x]
+        distractor_weights = list(set(sample_centroid_distances[x]) - {sample_centroid_distances[x][x_true_label]})
         num_partial_labels = random.randint(1, num_distractors+1)
-        partial_y[x, np.argsort(distractor_weights)[0:num_partial_labels]] = 1
+        candidate_distractors = list(set(range(num_classes)) - {y[x]})
+        distractors = random.choices(candidate_distractors, weights=distractor_weights, k=num_partial_labels)
+        partial_y[x, distractors] = 1
     
     ## Create Dataloaders
     X = np.float32(X)
