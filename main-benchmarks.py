@@ -148,7 +148,20 @@ elif args.ds in ['mnist', 'kmnist', 'fashion', 'cifar10', 'cifar100']:
         batch_size=args.bs,
         partial_type=args.pr)
 elif args.ds.startswith('synthetic'):
-    (partial_matrix_train_loader, train_loader, eval_loader, test_loader, partialY, dim, K) = generate_synthetic_hypercube_dataloader(args.prt, args.bs, 42)
+    # 'synthetic_10_1000_5_0.1'
+    # num_classes = 10
+    # num_samples = 1000
+    # feature_dim = 5
+    # class_sep = 0.1
+    dataset_config = args.ds.split('-')
+    num_classes = int(dataset_config[1])
+    num_samples = int(dataset_config[2])
+    feature_dim = int(dataset_config[3])
+    class_sep = float(dataset_config[4])
+    (partial_matrix_train_loader, train_loader, eval_loader, test_loader, partialY, dim, K) = generate_synthetic_hypercube_dataloader(args.prt, args.bs, 42, num_classes=num_classes,
+                                                                                                                                                            num_samples=num_samples,
+                                                                                                                                                            feature_dim=feature_dim,
+                                                                                                                                                            class_sep=class_sep)
     train_givenY = partialY
     train_givenY = torch.tensor(train_givenY)
 
