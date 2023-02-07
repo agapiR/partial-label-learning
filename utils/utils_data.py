@@ -558,31 +558,31 @@ def cifar100_sparse2coarse(targets, groups):
 # 19:vehicles 2
 
 ## Synthetic Hypercube Dataset PLL generation
-def generate_synthetic_hypercube_dataloader(partial_rate, batch_size, seed, num_classes=10,
-                                                                            num_samples = 1000,
-                                                                            feature_dim = 5,
-                                                                            class_sep = 0.1):
+def generate_synthetic_hypercube_dataloader(partial_rate, batch_size, seed, num_classes=5,
+                                                                            num_samples=1000,
+                                                                            feature_dim=5,
+                                                                            class_sep=0.1):
 
     ## Generate Samples
-    X, y, centroids = make_classification(  n_samples=num_samples,
-                                            # n_features = informative + redundant 
-                                            #               + repeated + random/useless
-                                            n_features=feature_dim, 
-                                            # all features are informative
-                                            n_informative=feature_dim, 
-                                            n_redundant=0,
-                                            n_repeated=0,
-                                            n_classes=num_classes,
-                                            # each class is associated with a single cluster
-                                            n_clusters_per_class=1,
-                                            flip_y=0.0,     # default = 0.01
-                                            class_sep=class_sep,
-                                            hypercube=True,
-                                            shift=0.0,
-                                            scale=1.0,
-                                            shuffle=True,
-                                            random_state=seed,
-                                            return_centroids=True)
+    X, y, centroids, y_centroids = make_classification( n_samples=num_samples,
+                                                        # n_features = informative + redundant 
+                                                        #               + repeated + random/useless
+                                                        n_features=feature_dim, 
+                                                        # all features are informative
+                                                        n_informative=feature_dim, 
+                                                        n_redundant=0,
+                                                        n_repeated=0,
+                                                        n_classes=num_classes,
+                                                        # each class is associated with a single cluster
+                                                        n_clusters_per_class=1,
+                                                        flip_y=0.0,     # default = 0.01
+                                                        class_sep=class_sep,
+                                                        hypercube=True,
+                                                        shift=0.0,
+                                                        scale=1.0,
+                                                        shuffle=True,
+                                                        random_state=seed,
+                                                        return_centroids=True)
 
     ## Generate Partial Labels
     partial_y = np.zeros((num_samples, num_classes))
@@ -593,11 +593,16 @@ def generate_synthetic_hypercube_dataloader(partial_rate, batch_size, seed, num_
         x_true_label = y[x]
         distractor_weights = list(set(sample_centroid_distances[x]) - {sample_centroid_distances[x][x_true_label]})
         distractor_weights = [1/w for w in distractor_weights]
-        # num_partial_labels = random.randint(1, num_distractors+1)
-        num_partial_labels = random.randint(0, num_distractors)
+        num_partial_labels = random.randint(1, num_distractors+1)
+        # num_partial_labels = random.randint(0, num_distractors)
         candidate_distractors = list(set(range(num_classes)) - {y[x]})
         distractors = random.choices(candidate_distractors, weights=distractor_weights, k=num_partial_labels)
         partial_y[x, distractors] = 1
+
+    # y_bin = np.zeros((num_samples, num_classes))
+    # y_bin[np.arange(y.size), y] = 1
+    # print("true:",y_bin)
+    # print("partial:",partial_y)
     
     ## Create Dataloaders
     X = np.float32(X)

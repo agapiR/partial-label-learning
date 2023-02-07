@@ -230,9 +230,11 @@ def make_classification(
 
     # Create each cluster; a variant of make_blobs
     stop = 0
+    y_centroids = np.zeros(n_clusters, dtype=int)   # Added by Agapi Rissaki
     for k, centroid in enumerate(centroids):
         start, stop = stop, stop + n_samples_per_cluster[k]
         y[start:stop] = k % n_classes  # assign labels
+        y_centroids[k] = k % n_classes  # Added by Agapi Rissaki
         X_k = X[start:stop, :n_informative]  # slice a view of the cluster
 
         A = 2 * generator.uniform(size=(n_informative, n_informative)) - 1
@@ -280,8 +282,8 @@ def make_classification(
         generator.shuffle(indices)
         X[:, :] = X[:, indices]
 
-    # Option added by Agapi Rissaki
+    # Added by Agapi Rissaki
     if return_centroids:
-        return X, y, centroids
+        return X, y, centroids, centroid_labels
     
     return X, y
