@@ -559,9 +559,73 @@ def cifar100_sparse2coarse(targets, groups):
 
 ## Synthetic Hypercube Dataset PLL generation
 def generate_synthetic_hypercube_dataloader(partial_rate, batch_size, seed, num_classes=5,
-                                                                            num_samples=1000,
-                                                                            feature_dim=5,
-                                                                            class_sep=0.1):
+                                            num_samples=1000,
+                                            feature_dim=5,
+                                            class_sep=0.1, use_cache=True):
+    
+    cachepath = "cache/pr-{}_classes-{}_samples-{}_features-{}_sep-{}_seed-{}.npz".format(partial_rate, num_classes, num_samples, feature_dim, class_sep, seed)
+
+    if use_cache and os.path.isfile(cachepath):
+        print("Loading dataset from cache", cachepath)
+        npzfile = np.load(cachepath)
+        train_X = npzfile['arr_0']
+        valid_X = npzfile['arr_1']
+        test_X = npzfile['arr_2']
+        train_y = npzfile['arr_3']
+        valid_y = npzfile['arr_4']
+        test_y = npzfile['arr_5']
+        train_partial_y = npzfile['arr_6']
+        valid_partial_y = npzfile['arr_7']
+        test_partial_y = npzfile['arr_8']
+    else:        
+        train_X, valid_X, test_X, train_y, valid_y, test_y, train_partial_y, valid_partial_y, test_partial_y = generate_synthetic_hypercube_data(partial_rate, batch_size, seed, num_classes, num_samples, feature_dim, class_sep)
+        os.makedirs(os.path.dirname(cachepath), exist_ok=True)
+        np.savez(cachepath, train_X, valid_X, test_X, train_y, valid_y, test_y, train_partial_y, valid_partial_y, test_partial_y)
+
+
+    print(train_X.shape[0], valid_X.shape[0], test_X.shape[0])
+
+    ordinary_train_dataset = RealDataset(train_X, train_y)
+    train_eval_loader = torch.utils.data.DataLoader(
+        dataset=ordinary_train_dataset,
+        batch_size=len(ordinary_train_dataset),
+        shuffle=False,
+        num_workers=0)
+
+    # train_dataset = RealIdxDataset(train_X, train_partial_y)
+    train_dataset = gen_index_dataset(train_X, train_partial_y, train_y)
+    train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
+                                               batch_size=batch_size,
+                                               shuffle=True,
+                                               drop_last=True,
+                                               num_workers=0)
+
+    ordinary_valid_dataset = RealDataset(valid_X, valid_y)
+    valid_eval_loader = torch.utils.data.DataLoader(
+        dataset=ordinary_valid_dataset,
+        batch_size=len(ordinary_valid_dataset),
+        shuffle=False,
+        num_workers=0)
+
+    ordinary_test_dataset = RealDataset(test_X, test_y)
+    test_eval_loader = torch.utils.data.DataLoader(
+        dataset=ordinary_test_dataset,
+        batch_size=len(ordinary_test_dataset),
+        shuffle=False,
+        num_workers=0)
+
+    num_features = train_X.shape[1]
+    num_classes = train_partial_y.shape[1]
+
+    return (train_loader, train_eval_loader, valid_eval_loader,
+            test_eval_loader, train_partial_y, num_features, num_classes)
+
+        
+        
+def generate_synthetic_hypercube_data(partial_rate, batch_size, seed, num_classes=5,
+                                      num_samples=1000,
+                                      feature_dim=5,
+                                      class_sep=0.1):
 
     ## Generate Samples
     X, y, centroids, y_centroids = make_classification( n_samples=num_samples,
@@ -630,39 +694,4 @@ def generate_synthetic_hypercube_dataloader(partial_rate, batch_size, seed, num_
     valid_X = scaler.transform(valid_X)
     test_X = scaler.transform(test_X)
 
-    print(train_X.shape[0], valid_X.shape[0], test_X.shape[0])
-
-    ordinary_train_dataset = RealDataset(train_X, train_y)
-    train_eval_loader = torch.utils.data.DataLoader(
-        dataset=ordinary_train_dataset,
-        batch_size=len(ordinary_train_dataset),
-        shuffle=False,
-        num_workers=0)
-
-    # train_dataset = RealIdxDataset(train_X, train_partial_y)
-    train_dataset = gen_index_dataset(train_X, train_partial_y, train_y)
-    train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
-                                               batch_size=batch_size,
-                                               shuffle=True,
-                                               drop_last=True,
-                                               num_workers=0)
-
-    ordinary_valid_dataset = RealDataset(valid_X, valid_y)
-    valid_eval_loader = torch.utils.data.DataLoader(
-        dataset=ordinary_valid_dataset,
-        batch_size=len(ordinary_valid_dataset),
-        shuffle=False,
-        num_workers=0)
-
-    ordinary_test_dataset = RealDataset(test_X, test_y)
-    test_eval_loader = torch.utils.data.DataLoader(
-        dataset=ordinary_test_dataset,
-        batch_size=len(ordinary_test_dataset),
-        shuffle=False,
-        num_workers=0)
-
-    num_features = X.shape[1]
-    num_classes = partial_y.shape[1]
-
-    return (train_loader, train_eval_loader, valid_eval_loader,
-            test_eval_loader, train_partial_y, num_features, num_classes)
+    return train_X, valid_X, test_X, train_y, valid_y, test_y, train_partial_y, valid_partial_y, test_partial_y

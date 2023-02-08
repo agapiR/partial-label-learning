@@ -284,6 +284,7 @@ def make_classification(
 
     # Added by Agapi Rissaki
     if return_centroids:
+        centroid_labels="MISSING" # TODO what should we return here?
         return X, y, centroids, centroid_labels
     
     return X, y
