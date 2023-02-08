@@ -5,6 +5,18 @@ import matplotlib.pyplot as plt
 directory = "out"
 prefices = ["uniform", "random", "huniform", "h10uniform", "h5uniform", "h4uniform"]
 
+color_map = {
+    "prp": "red",
+    "nll": "b",
+    "cc":"b",
+    "lws": "g",
+    "democracy":"c",
+    "bi_prp":"y",
+    "bi_prp2":"y",
+    "rc":"k",
+    "bi_prp_nll":"m"
+    }
+
 result = {}
 for prefix in prefices:
     for filename in os.listdir(directory):
@@ -45,14 +57,15 @@ for prefix in result.keys():
             d3 = d2[model]
             outfile = "plots/{}_{}_{}.png".format(prefix, dataset, model)
             for loss in d3.keys():
+                color = color_map[loss]
                 d4 = d3[loss]
                 partial_rates = d4.keys()
                 accuracies = d4.values()
                 sorted_pairs = sorted(zip(partial_rates, accuracies))
                 partial_rates = [round(float(x),2) for x, _ in sorted_pairs]
                 accuracies = [round(float(x),2) for _, x in sorted_pairs]
-                print("   ", loss, partial_rates, accuracies)
-                plt.plot(partial_rates, accuracies, label=loss, marker='o')
+                print("   ", loss, partial_rates, accuracies, color)
+                plt.plot(partial_rates, accuracies, color=color, label=loss, marker='o')
             plt.legend()
             plt.savefig(outfile)
             plt.clf()
