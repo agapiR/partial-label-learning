@@ -578,7 +578,7 @@ def generate_synthetic_hypercube_dataloader(partial_rate, batch_size, seed, num_
         valid_partial_y = npzfile['arr_7']
         test_partial_y = npzfile['arr_8']
     else:        
-        train_X, valid_X, test_X, train_y, valid_y, test_y, train_partial_y, valid_partial_y, test_partial_y = generate_synthetic_hypercube_data(partial_rate, batch_size, seed, num_classes, num_samples, feature_dim, class_sep)
+        train_X, valid_X, test_X, train_y, valid_y, test_y, train_partial_y, valid_partial_y, test_partial_y = generate_synthetic_hypercube_data(partial_rate, seed, num_classes, num_samples, feature_dim, class_sep)
         os.makedirs(os.path.dirname(cachepath), exist_ok=True)
         np.savez(cachepath, train_X, valid_X, test_X, train_y, valid_y, test_y, train_partial_y, valid_partial_y, test_partial_y)
 
@@ -622,7 +622,8 @@ def generate_synthetic_hypercube_dataloader(partial_rate, batch_size, seed, num_
 
         
         
-def generate_synthetic_hypercube_data(partial_rate, batch_size, seed, num_classes=5,
+def generate_synthetic_hypercube_data(partial_rate, seed, 
+                                      num_classes=5,
                                       num_samples=1000,
                                       feature_dim=5,
                                       class_sep=0.1):
@@ -654,21 +655,14 @@ def generate_synthetic_hypercube_data(partial_rate, batch_size, seed, num_classe
     num_distractors = int(partial_rate*num_classes)
     sample_centroid_distances = dist(X, Y=centroids)
     for x in range(num_samples):
-        x_true_label = y[x]
-        distractor_weights = list(set(sample_centroid_distances[x]) - {sample_centroid_distances[x][x_true_label]})
-        distractor_weights = [1/w for w in distractor_weights]
-        num_partial_labels = random.randint(1, num_distractors+1)
-        # num_partial_labels = random.randint(0, num_distractors)
-        candidate_distractors = list(set(range(num_classes)) - {y[x]})
-        distractors = random.choices(candidate_distractors, weights=distractor_weights, k=num_partial_labels)
+        candidate_distractors_sorted = list(np.argsort(sample_centroid_distances[x]))
+        distractors = candidate_distractors_sorted[:num_distractors]
+        # if the true label is selected among the distractors, replace with additional distractor
+        if y[x] in distractors:
+            distractors.append(candidate_distractors_sorted[num_distractors-1])
         partial_y[x, distractors] = 1
-
-    # y_bin = np.zeros((num_samples, num_classes))
-    # y_bin[np.arange(y.size), y] = 1
-    # print("true:",y_bin)
-    # print("partial:",partial_y)
     
-    ## Create Dataloaders
+    ## Create Splits
     X = np.float32(X)
     y = np.float32(y)
     partial_y = np.float32(partial_y)

@@ -29,13 +29,12 @@ parser.add_argument('-ds',
                     type=str,
                     required=False)  # birdac, lost, LYN, MSRCv2, spd
 parser.add_argument('-pr', help='partial_type', default="01", type=str)
-parser.add_argument(
-    '-mo',
-    help='model name',
-    default='mlp',
-    choices=['linear', 'mlp', 'cnn', 'resnet', 'densenet', 'lenet'],
-    type=str,
-    required=False)
+parser.add_argument('-mo',
+                    help='model name',
+                    default='mlp',
+                    choices=['linear', 'mlp', 'cnn', 'resnet', 'densenet', 'lenet'],
+                    type=str,
+                    required=False)
 parser.add_argument('-lo',
                     help='specify a loss function',
                     default='rc',
@@ -84,49 +83,57 @@ parser.add_argument('-alpha',
                     default=1.0, # 1 is equivalent to prp
                     type=float,
                     required=False)
-parser.add_argument('-prt',
-                    help='partial rate.',
-                    default=0.1,
-                    type=float,
-                    required=False)
 parser.add_argument('-res',
                     help='result directory.',
                     default="./results_cv_best",
                     type=str,
                     required=False)
 
+## Synthetic data hyperparameters
+parser.add_argument('-prt', help='partial rate.', default=0.1, type=float, required=False)                  
+parser.add_argument('-nc', help='number of classes.', default=10, type=int, required=False)                  
+parser.add_argument('-ns', help='number of samples.', default=1000, type=int, required=False)                  
+parser.add_argument('-nf', help='number of features.', default=5, type=int, required=False)                  
+parser.add_argument('-csep', help='class separation.', default=0.1, type=float, required=False)        
+parser.add_argument('-dseed', help='Random seed for data generation.', default=42, type=int, required=False)
 args = parser.parse_args()
 
+## Output directory
 save_dir = args.res
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 
+## Dataset name
+if args.ds.startswith('synthetic'):
+    dname = f'synthetic_{args.ns}_{args.nc}_{args.nf}_{args.prt}_{args.csep}_{args.dseed}'
+else:
+    dname = args.ds
+
 if args.lo in ['hprp']:
     save_name = "Res-sgd_{}_{}_{}_{}_{}_{}_{}_{}_{}_{}_{}.csv".format(
-        args.ds, args.mo, args.lo, args.lr, args.wd, args.ldr,
+        dname, args.mo, args.lo, args.lr, args.wd, args.ldr,
         args.lds, args.ep, args.bs, args.seed, args.alpha)
 elif args.lo in ['ll']:
     save_name = "Res-sgd_{}_{}_{}_{}_{}_{}_{}_{}_{}_{}.csv".format(
-        args.ds, args.mo, args.lo, args.lr, args.wd, args.ldr,
+        dname, args.mo, args.lo, args.lr, args.wd, args.ldr,
         args.lds, args.ep, args.bs, args.seed)
 elif args.lo in ['lws']:
     save_name = "Res-sgd_{}_{}_{}_{}_{}_{}_{}_{}_{}_{}_{}_{}.csv".format(
-        args.ds, args.mo, args.lo, args.lw0, args.lw, args.lr, args.wd,
+        dname, args.mo, args.lo, args.lw0, args.lw, args.lr, args.wd,
         args.ldr, args.lds, args.ep, args.bs, args.seed)
 else:
     save_name = "Res-sgd_{}_{}_{}_{}_{}_{}_{}_{}_{}_{}.csv".format(
-        args.ds, args.mo, args.lo, args.lr, args.wd, args.ldr,
+        dname, args.mo, args.lo, args.lr, args.wd, args.ldr,
         args.lds, args.ep, args.bs, args.seed)
 save_path = os.path.join(save_dir, save_name)
 with open(save_path, 'w') as f:
-    f.writelines("epoch,train_acc,test_acc,train_pos_prob\n") # TODO: if file already exists, erase previous, DONE
+    f.writelines("epoch,train_acc,test_acc,train_pos_prob\n")
 
 np.random.seed(args.seed)
 torch.manual_seed(args.seed)
 torch.cuda.manual_seed_all(args.seed)
 
-device = torch.device("cuda:" +
-                      args.gpu if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:" + args.gpu if torch.cuda.is_available() else "cpu")
 
 if args.ds in ['birdac', 'lost']:
     (partial_matrix_train_loader, train_loader, eval_loader, test_loader, partialY, dim, K) = generate_real_dataloader(args.ds, './data/realworld/', args.bs, 42)
@@ -148,20 +155,7 @@ elif args.ds in ['mnist', 'kmnist', 'fashion', 'cifar10', 'cifar100']:
         batch_size=args.bs,
         partial_type=args.pr)
 elif args.ds.startswith('synthetic'):
-    # 'synthetic_10_1000_5_0.1'
-    # num_classes = 10
-    # num_samples = 1000
-    # feature_dim = 5
-    # class_sep = 0.1
-    dataset_config = args.ds.split('-')
-    num_classes = int(dataset_config[1])
-    num_samples = int(dataset_config[2])
-    feature_dim = int(dataset_config[3])
-    class_sep = float(dataset_config[4])
-    (partial_matrix_train_loader, train_loader, eval_loader, test_loader, partialY, dim, K) = generate_synthetic_hypercube_dataloader(args.prt, args.bs, 42, num_classes=num_classes,
-                                                                                                                                                            num_samples=num_samples,
-                                                                                                                                                            feature_dim=feature_dim,
-                                                                                                                                                            class_sep=class_sep)
+    (partial_matrix_train_loader, train_loader, eval_loader, test_loader, partialY, dim, K) = generate_synthetic_hypercube_dataloader(args.prt, args.bs, args.dseed, num_classes=args.nc, num_samples=args.ns, feature_dim=args.nf, class_sep=args.csep)
     train_givenY = partialY
     train_givenY = torch.tensor(train_givenY)
 
@@ -179,7 +173,6 @@ elif args.lo == 'lws':
     confidence = confidence.to(device)
     loss_fn = lws_loss
 elif args.lo == 'prp':
-    # softmax = torch.nn.Softmax(dim=1)
     loss_fn = prp_loss()
 elif args.lo == 'hprp':
     loss_fn = h_prp_loss(h=args.alpha)
@@ -218,11 +211,9 @@ optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.wd
 train_accuracy = accuracy_check(loader=train_loader, model=model, device=device)
 test_accuracy = accuracy_check(loader=test_loader, model=model, device=device)
 train_pos_prob = prob_check(loader=partial_matrix_train_loader, model=model, device=device)
-# train_ratios = ratio_check(loader=partial_matrix_train_loader, model=model, device=device)
-train_ratios = 0.0 # TODO
 
-print('Epoch: 0. Tr Acc: {:.6f}. Te Acc: {:.6f}. Tr Pos Prob {:.6f}. Tr Ratios {}.'.format(
-        0, train_accuracy, test_accuracy, train_pos_prob, np.around(train_ratios,6)))
+print('Epoch: 0. Tr Acc: {:.6f}. Te Acc: {:.6f}. Tr Pos Prob {:.6f}.'.format(
+        0, train_accuracy, test_accuracy, train_pos_prob))
 with open(save_path, "a") as f:
     f.writelines("{},{:.6f},{:.6f},{:.6f}\n".format(0, train_accuracy, test_accuracy, train_pos_prob))
 
@@ -271,10 +262,9 @@ for epoch in range(args.ep):
     test_accuracy = accuracy_check(loader=test_loader, model=model, device=device)
     train_pos_prob = prob_check(loader=partial_matrix_train_loader, model=model, device=device)
     # train_ratios = ratio_check(loader=partial_matrix_train_loader, model=model, device=device)
-    train_ratios = 0.0 # TODO
 
-    print('Epoch: {}. Tr Acc: {:.6f}. Te Acc: {:.6f}. Tr Pos Prob {:.6f}. Tr Ratios {}.'.format(
-        epoch + 1, train_accuracy, test_accuracy, train_pos_prob, np.around(train_ratios,6)))
+    print('Epoch: {}. Tr Acc: {:.6f}. Te Acc: {:.6f}. Tr Pos Prob {:.6f}.'.format(
+        epoch + 1, train_accuracy, test_accuracy, train_pos_prob))
     sys.stdout.flush()
     with open(save_path, "a") as f:
         f.writelines("{},{:.6f},{:.6f},{:.6f}\n".format(epoch + 1, train_accuracy,
