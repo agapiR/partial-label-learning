@@ -43,7 +43,7 @@ for prefix in prefices:
             f = os.path.join(directory, filename)
             with open(f) as fff:
                 for line in fff:
-                    match = re.match("^Average Test Accuracy over Last 10 Epochs: (.*)$", line)
+                    match = re.match("^Average Training Accuracy over Last 10 Epochs: (.*)$", line)
                     # result[sample_num][class_num][feature_num][prt][csep][dseed][model][loss][seed]
                     if match:
                         test_accuracy = match.groups()[0]
@@ -67,7 +67,7 @@ partial_rates = sorted([float(prt) for prt in config['partial_rate'] if float(pr
 # Accuracy Comparison for random Dataset Samples
 cmap = plt.get_cmap("tab10")
 for model, class_sep in product(config['model'], config['class_sep']):
-    outfile = "figs/accuracy_comparison_for_random_datasets_{}_{}_{}_{}_{}_{}.png".format(sample_num, class_num, feature_num, class_sep, model, seed_default)
+    outfile = "figs/train_accuracy_comparison_for_random_datasets_{}_{}_{}_{}_{}_{}.png".format(sample_num, class_num, feature_num, class_sep, model, seed_default)
     for i,loss in enumerate(config['loss']):
         median_accuracies = []
         max_accuracies = []
@@ -87,7 +87,7 @@ for model, class_sep in product(config['model'], config['class_sep']):
 # Accuracy Comparison for random initializations
 cmap = plt.get_cmap("tab10")
 for model, class_sep in product(config['model'], config['class_sep']):
-    outfile = "figs/accuracy_comparison_for_random_init_{}_{}_{}_{}_{}_{}.png".format(sample_num, class_num, feature_num, class_sep, dseed_default, model)
+    outfile = "figs/train_accuracy_comparison_for_random_init_{}_{}_{}_{}_{}_{}.png".format(sample_num, class_num, feature_num, class_sep, dseed_default, model)
     for i,loss in enumerate(config['loss']):
         median_accuracies = []
         max_accuracies = []
