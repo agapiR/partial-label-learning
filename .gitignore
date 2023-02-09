@@ -1,5 +1,5 @@
-
-
+*.csv
+*.npz
 *.zip
 *.out
 *.txt
