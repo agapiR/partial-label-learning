@@ -526,6 +526,9 @@ def cifar100_sparse2coarse(targets, groups):
     new_targets = coarse_labels[targets]
     if groups == 20:
         return new_targets
+    elif groups == 50:
+        coarse_labels = np.repeat(np.arange(50), 2)
+        return coarse_labels[targets]
     else:
         if groups==10:
             coarser_labels = [0, 0, 1, 2, 1, 2, 3, 7, 4, 3, 8, 4, 5, 7, 5, 6, 6, 8, 9, 9]
