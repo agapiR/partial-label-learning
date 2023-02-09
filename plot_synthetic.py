@@ -61,7 +61,7 @@ dseed_default = 42
 seed_default = 5
 
 partial_rates = sorted([float(prt) for prt in config['partial_rate'] if float(prt)>0])
-partial_rates = sorted([float(prt) for prt in config['partial_rate']])
+# partial_rates = sorted([float(prt) for prt in config['partial_rate']])
 
 
 # Accuracy Comparison for random Dataset Samples
