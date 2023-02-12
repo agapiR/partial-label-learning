@@ -3,7 +3,7 @@ import os
 import matplotlib.pyplot as plt
 
 directory = "out"
-prefices = ["uniform", "random", "huniform", "h10uniform", "h5uniform", "h4uniform"]
+prefices = ["uniform", "random", "huniform", "h10uniform", "h5uniform", "h4uniform", "h50uniform"]
 
 color_map = {
     "prp": "red",

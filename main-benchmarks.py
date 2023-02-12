@@ -19,6 +19,7 @@ from utils.utils_loss import (rc_loss, cc_loss, lws_loss,
 
 # TODO: read as argument
 CLUSTER_PLL = False
+NO_IMPROVEMENT_TOLERANCE=20
 
 
 parser = argparse.ArgumentParser()
@@ -155,7 +156,11 @@ elif args.ds in ['mnist', 'kmnist', 'fashion', 'cifar10', 'cifar100']:
         batch_size=args.bs,
         partial_type=args.pr)
 elif args.ds.startswith('synthetic'):
-    (partial_matrix_train_loader, train_loader, eval_loader, test_loader, partialY, dim, K) = generate_synthetic_hypercube_dataloader(args.prt, args.bs, args.dseed, num_classes=args.nc, num_samples=args.ns, feature_dim=args.nf, class_sep=args.csep)
+    (partial_matrix_train_loader, train_loader,
+     partial_matrix_valid_loader, valid_loader,
+     partial_matrix_test_loader, test_loader,
+     partialY, valid_partial_Y, test_partial_Y,
+     dim, K) = generate_synthetic_hypercube_dataloader(args.prt, args.bs, args.dseed, num_classes=args.nc, num_samples=args.ns, feature_dim=args.nf, class_sep=args.csep)
     train_givenY = partialY
     train_givenY = torch.tensor(train_givenY)
 
@@ -210,7 +215,7 @@ optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.wd
 
 train_accuracy = accuracy_check(loader=train_loader, model=model, device=device)
 test_accuracy = accuracy_check(loader=test_loader, model=model, device=device)
-train_pos_prob = prob_check(loader=partial_matrix_train_loader, model=model, device=device)
+train_pos_prob, _ = prob_check(loader=partial_matrix_train_loader, model=model, device=device)
 
 print('Epoch: 0. Tr Acc: {:.6f}. Te Acc: {:.6f}. Tr Pos Prob {:.6f}.'.format(
         0, train_accuracy, test_accuracy, train_pos_prob))
@@ -229,7 +234,13 @@ def adjust_learning_rate(optimizer, epoch):
 
 test_acc_list = []
 train_acc_list = []
+test_prob_pll_list = []
+test_prob_list = []
+train_prob_pll_list = []
+train_prob_list = []
 
+best_valid_pos_prob = 0.0
+tolerance = NO_IMPROVEMENT_TOLERANCE
 for epoch in range(args.ep):
     model.train()
     adjust_learning_rate(optimizer, epoch)
@@ -259,25 +270,52 @@ for epoch in range(args.ep):
         
     model.eval()
     train_accuracy = accuracy_check(loader=train_loader, model=model, device=device)
+    train_pos_prob, train_pos_prob_true = prob_check(loader=partial_matrix_train_loader, model=model, device=device)
+    valid_pos_prob, _ = prob_check(loader=partial_matrix_valid_loader, model=model, device=device)    
+    valid_accuracy = accuracy_check(loader=valid_loader, model=model, device=device)
     test_accuracy = accuracy_check(loader=test_loader, model=model, device=device)
-    train_pos_prob = prob_check(loader=partial_matrix_train_loader, model=model, device=device)
+    test_pos_prob, test_pos_prob_true = prob_check(loader=partial_matrix_test_loader, model=model, device=device)
+    
     # train_ratios = ratio_check(loader=partial_matrix_train_loader, model=model, device=device)
 
-    print('Epoch: {}. Tr Acc: {:.6f}. Te Acc: {:.6f}. Tr Pos Prob {:.6f}.'.format(
-        epoch + 1, train_accuracy, test_accuracy, train_pos_prob))
+    print('Epoch: {}. Tr Acc: {:.6f}. Va Acc: {:.6f}. Va Pos Prob {:.6f}.'.format(
+        epoch + 1, train_accuracy, valid_accuracy, valid_pos_prob))
     sys.stdout.flush()
     with open(save_path, "a") as f:
         f.writelines("{},{:.6f},{:.6f},{:.6f}\n".format(epoch + 1, train_accuracy,
                                                         test_accuracy, train_pos_prob))
 
-    if epoch >= (args.ep - 10):
-        test_acc_list.extend([test_accuracy])
-        train_acc_list.extend([train_accuracy])
+    # if epoch >= (args.ep - 10):
+    #     test_acc_list.extend([test_accuracy])
+    #     train_acc_list.extend([train_accuracy])
 
-avg_test_acc = np.mean(test_acc_list)
-avg_train_acc = np.mean(train_acc_list)
+    test_acc_list.extend([test_accuracy])
+    train_acc_list.extend([train_accuracy])
+    test_prob_pll_list.extend([test_pos_prob])
+    test_prob_list.extend([test_pos_prob_true])
+    train_prob_pll_list.extend([train_pos_prob])
+    train_prob_list.extend([train_pos_prob_true])
+
+    if valid_pos_prob > best_valid_pos_prob:
+        best_valid_pos_prob = valid_pos_prob
+        tolerance = NO_IMPROVEMENT_TOLERANCE
+    else:
+        tolerance -= 1
+    if tolerance <= 0:
+        break
+
+avg_test_acc = np.mean(test_acc_list[-10:])
+avg_train_acc = np.mean(train_acc_list[-10:])
+avg_test_prob = np.mean(test_prob_list[-10:])
+avg_test_prob_pll = np.mean(test_prob_pll_list[-10:])
+avg_train_prob = np.mean(train_prob_list[-10:])
+avg_train_prob_pll = np.mean(train_prob_pll_list[-10:])
 
 print("Learning Rate:", args.lr, "Weight Decay:", args.wd)
 print("Average Test Accuracy over Last 10 Epochs:", avg_test_acc)
+print("Average Test Probability over Last 10 Epochs:", avg_test_prob)
+print("Average Test PLL Probability over Last 10 Epochs:", avg_test_prob_pll)
+print("Average Train Probability over Last 10 Epochs:", avg_train_prob)
+print("Average Train PLL Probability over Last 10 Epochs:", avg_train_prob_pll)
 print("Average Training Accuracy over Last 10 Epochs:", avg_train_acc,
       "\n\n\n")

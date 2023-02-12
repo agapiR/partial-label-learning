@@ -1,28 +1,9 @@
 import os
 import subprocess
 import itertools
+import math
 
-args = {
-    "-ds": ['synthetic'],
-    "-pr": ['01'],
-    "-mo": ['mlp'],
-    "-lo": ['prp', 'lws', 'nll'],
-    "-lw": ['1'],
-    "-lr": ["0.005"],
-    "-wd": ["0.001"],
-    "-bs": ["256"],
-    "-ep": ["100"],
-    "-seed": ["5"],
-    "-alpha":["1.0"],
-    "-prt": ["0.1", "0.2"],
-    "-nc": ["10"],
-    "-ns": ["1000"],
-    "-nf": ["5"],
-    "-csep": ["0.1"],
-    "-dseed": ["42"],
-    }
-
-def run_all(args, outdir="out", parallel=10):
+def run_all(args, outdir, gpus, jobs_per_gpu=10):
     os.makedirs(outdir, exist_ok=True)
     tasks = []
     for values in itertools.product(*args.values()):
@@ -34,15 +15,24 @@ def run_all(args, outdir="out", parallel=10):
         outfile += ".out"
         tasks.append((command, outfile))
 
-    for i in range(0, len(tasks), parallel):
-        parallel_tasks = tasks[i:i+parallel]
-
+    num_gpus = len(gpus)
+    for i in range(0, len(tasks), jobs_per_gpu * num_gpus):
+        parallel_tasks = tasks[i:i+ jobs_per_gpu * num_gpus]
         handles = []
-        for command, outfile in parallel_tasks:      
-            with open(outfile, "w") as outstream:
-                handle = subprocess.Popen(command, stdout=outstream)
-                handles.append(handle)
-        for handle in handles:
+        curr_gpu_index = 0
+        for command, outfile in parallel_tasks:
+            my_env = os.environ.copy()
+            my_env["CUDA_VISIBLE_DEVICES"] = str(gpus[curr_gpu_index])
+            print(command)
+            handle = subprocess.Popen(command, env=my_env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            handles.append((handle,outfile))
+            curr_gpu_index = (curr_gpu_index + 1) % num_gpus            
+        for (handle, outfile) in handles:
             handle.wait
+            stdout, stderr = handle.communicate()
+            with open(outfile, "w") as f:
+                print(stdout, file=f)
+            
 
-run_all(args, "out2", 10)
+                
+

@@ -5,14 +5,18 @@ from utils.utils_loss import nll_loss
 def prob_check(loader, model, device):
     nll = nll_loss()
     with torch.no_grad():
-        total, num_samples = 0, 0
+        total, true, num_samples = 0, 0, 0
         for images, labels, true_labels, index in loader:
-            images, targets, index = images.to(device), labels.to(device), index.to(device)
+            images, targets, true_targets, index = images.to(device), labels.to(device), true_labels.to(device), index.to(device)
+            true_targets = F.one_hot(true_targets.long(), targets.shape[1])
             outputs = model(images)
             nll_loss_val, total_prob = nll(outputs, targets.float())
+            _, true_prob = nll(outputs, true_targets.float())
             total += total_prob.item()
+            true += true_prob.item()
             num_samples += true_labels.size(0)
-    return total / num_samples
+    num_samples = max(num_samples, 1)
+    return total / num_samples, true / num_samples
 
 def ratio_check(loader, model, device, idx=1):
     with torch.no_grad():
@@ -49,6 +53,7 @@ def accuracy_check(loader, model, device):
             _, predicted = torch.max(outputs.data, 1)
             total += (predicted == labels).sum().item()
             num_samples += labels.size(0)
+    num_samples = max(num_samples, 1)
     return total / num_samples
 
 

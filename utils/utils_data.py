@@ -595,14 +595,6 @@ def generate_synthetic_hypercube_dataloader(partial_rate, batch_size, seed, num_
         shuffle=False,
         num_workers=0)
 
-    # train_dataset = RealIdxDataset(train_X, train_partial_y)
-    train_dataset = gen_index_dataset(train_X, train_partial_y, train_y)
-    train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
-                                               batch_size=batch_size,
-                                               shuffle=True,
-                                               drop_last=True,
-                                               num_workers=0)
-
     ordinary_valid_dataset = RealDataset(valid_X, valid_y)
     valid_eval_loader = torch.utils.data.DataLoader(
         dataset=ordinary_valid_dataset,
@@ -617,11 +609,34 @@ def generate_synthetic_hypercube_dataloader(partial_rate, batch_size, seed, num_
         shuffle=False,
         num_workers=0)
 
+    # train_dataset = RealIdxDataset(train_X, train_partial_y)
+    train_dataset = gen_index_dataset(train_X, train_partial_y, train_y)
+    train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
+                                               batch_size=batch_size,
+                                               shuffle=True,
+                                               drop_last=False,
+                                               num_workers=0)
+    valid_dataset = gen_index_dataset(valid_X, valid_partial_y, valid_y)
+    valid_loader = torch.utils.data.DataLoader(dataset=valid_dataset,
+                                               batch_size=batch_size,
+                                               shuffle=True,
+                                               drop_last=False,
+                                               num_workers=0)
+    test_dataset = gen_index_dataset(test_X, test_partial_y, test_y)
+    test_loader = torch.utils.data.DataLoader(dataset=test_dataset,
+                                               batch_size=batch_size,
+                                               shuffle=True,
+                                               drop_last=False,
+                                               num_workers=0)
+
+
     num_features = train_X.shape[1]
     num_classes = train_partial_y.shape[1]
 
-    return (train_loader, train_eval_loader, valid_eval_loader,
-            test_eval_loader, train_partial_y, num_features, num_classes)
+    return (train_loader, train_eval_loader,
+            valid_loader, valid_eval_loader,
+            test_loader, test_eval_loader,
+            train_partial_y, valid_partial_y, test_partial_y, num_features, num_classes)
 
         
         
