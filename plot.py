@@ -4,14 +4,25 @@ import matplotlib.pyplot as plt
 from statistics import median
 import math
 
-metrics=["Test Accuracy", "Test Prob", "Test Prob PLL", "Train Prob", "Train Prob PLL"]
+metrics=["Test Prob", "Test Prob PLL", "Test Accuracy", "Train Prob", "Train Prob PLL", "Train Accuracy"]
 
 metric_map={
     "Test Accuracy": "Average Test Accuracy over Last 10 Epochs: (\d+\.\d*)",
+    "Train Accuracy": "Average Training Accuracy over Last 10 Epochs: (\d+\.\d*)",
     "Test Prob": "Average Test Probability over Last 10 Epochs: (\d+\.\d*)",
     "Test Prob PLL": "Average Test PLL Probability over Last 10 Epochs: (\d+\.\d*)",
     "Train Prob": "Average Train Probability over Last 10 Epochs: (\d+\.\d*)",
     "Train Prob PLL": "Average Train PLL Probability over Last 10 Epochs: (\d+\.\d*)",
+}
+
+is_float = {
+    "prt": True,
+    "bs": True,
+    "nc": True,
+    "mo": False,
+    "nf": True,
+    "ns": True,
+    "csep": True,
 }
 
 color_map = {
@@ -39,7 +50,9 @@ def plot(directory, series, x_axis, outdir, metrics):
             for i in range(0, len(args), 2):
                 argdict[args[i]] = args[i+1].rstrip('_')
             result_s = argdict[series]
-            result_x = float(argdict[x_axis])
+            result_x = argdict[x_axis]
+            if is_float[x_axis]:
+                result_x = float(result_x)
 
             for m in metrics:
                 if result_s not in result[m]:
@@ -81,13 +94,16 @@ def plot(directory, series, x_axis, outdir, metrics):
             axs[i%3, i//3].xaxis.label.set_fontsize(28)
             axs[i%3, i//3].yaxis.label.set_fontsize(28)
             axs[i%3, i//3].legend()
+    
     outfile = "{}/plot_{}_{}.png".format(outdir, series, x_axis)
+    os.makedirs(outdir, exist_ok=True)
     plt.savefig(outfile)
     # plt.clf()
 
 
-directory = "out/zs1"
+directory = "out/zs6"
 series = "lo"
-x_axis = "prt"
-outdir="plots"
-plot(directory, series, x_axis, outdir, metrics)
+x_axes = ["prt", "csep"]
+outdir="plots/centroid_distance"
+for x_axis in x_axes:
+    plot(directory, series, x_axis, outdir, metrics)
