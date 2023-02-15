@@ -8,7 +8,8 @@ def prob_check(loader, model, device):
         total, true, num_samples = 0, 0, 0
         for images, labels, true_labels, index in loader:
             images, targets, true_targets, index = images.to(device), labels.to(device), true_labels.to(device), index.to(device)
-            true_targets = F.one_hot(true_targets.long(), targets.shape[1])
+            if len(true_targets.shape) == 1: # sparse representation, turn it into onehot
+                true_targets = F.one_hot(true_targets.long(), targets.shape[1])
             outputs = model(images)
             nll_loss_val, total_prob = nll(outputs, targets.float())
             _, true_prob = nll(outputs, true_targets.float())

@@ -260,6 +260,25 @@ def generate_uniform_cv_candidate_labels(dataname, train_labels, partial_type):
     return partialY
 
 
+def generate_cv_dataloader(dataname, batch_size, partial_rate, partial_type, cluster):
+    (full_train_loader, full_test_loader, train_loader, test_loader, ordinary_train_dataset, test_dataset, num_classes) = prepare_cv_datasets(dataname, batch_size)
+    partial_matrix_train_loader, train_partial_Y, dim = prepare_loaders_for_cv_candidate_labels(dataname, full_train_loader, batch_size, partial_rate, partial_type, cluster)
+    partial_matrix_test_loader, test_partial_Y, dim = prepare_loaders_for_cv_candidate_labels(dataname, full_test_loader, batch_size, partial_rate, partial_type, cluster)
+
+    # TODO
+    partial_matrix_valid_loader = partial_matrix_test_loader
+    valid_loader = test_loader
+    valid_partial_Y = test_partial_Y
+
+    return (partial_matrix_train_loader, train_loader,
+            partial_matrix_valid_loader, valid_loader,
+            partial_matrix_test_loader, test_loader,
+            train_partial_Y, valid_partial_Y, test_partial_Y,
+            dim, num_classes
+    )
+    
+
+
 def prepare_cv_datasets(dataname, batch_size):
     if dataname == 'mnist':
         ordinary_train_dataset = dsets.MNIST(root='~/datasets/mnist',
@@ -327,6 +346,7 @@ def prepare_cv_datasets(dataname, batch_size):
                                      train=False,
                                      transform=test_transform)
 
+
     train_loader = torch.utils.data.DataLoader(dataset=ordinary_train_dataset,
                                                batch_size=batch_size,
                                                shuffle=True,
@@ -335,17 +355,24 @@ def prepare_cv_datasets(dataname, batch_size):
                                               batch_size=batch_size,
                                               shuffle=False,
                                               num_workers=0)
+
     full_train_loader = torch.utils.data.DataLoader(
         dataset=ordinary_train_dataset,
         batch_size=len(ordinary_train_dataset.data),
         shuffle=True,
         num_workers=0)
+    full_test_loader = torch.utils.data.DataLoader(
+        dataset=test_dataset,
+        batch_size=len(test_dataset.data),
+        shuffle=True,
+        num_workers=0)
+    
     if dataname == 'cifar100':
         num_classes = 100
     else:
         num_classes = 10
-    return (full_train_loader, train_loader, test_loader,
-            ordinary_train_dataset, test_dataset, num_classes)
+        
+    return (full_train_loader, full_test_loader, train_loader, test_loader, ordinary_train_dataset, test_dataset, num_classes)
 
 
 def prepare_cv_datasets_hyper(dataname, batch_size):
@@ -416,22 +443,21 @@ def prepare_cv_datasets_hyper(dataname, batch_size):
             validationset, num_classes)
 
 
-def prepare_train_loaders_for_uniform_cv_candidate_labels(
-        dataname, full_train_loader, batch_size, partial_type):
-    for i, (data, labels) in enumerate(full_train_loader):
-        K = torch.max(
-            labels
-        ) + 1  # K is number of classes, full_train_loader is full batch
-    partialY = generate_uniform_cv_candidate_labels(dataname, labels, partial_type)
-    partial_matrix_dataset = gen_index_dataset(data, partialY.float(),
-                                               partialY.float())
-    partial_matrix_train_loader = torch.utils.data.DataLoader(
-        dataset=partial_matrix_dataset,
-        batch_size=batch_size,
-        shuffle=True,
-        num_workers=0)
+def prepare_loaders_for_cv_candidate_labels(dataname, full_loader, batch_size, partial_rate, partial_type, cluster):
+    for i, (data, labels) in enumerate(full_loader):
+        # K = torch.max(labels) + 1  # K is number of classes, full_train_loader is full batch
+        if cluster:
+            partialY = generate_cluster_based_candidate_labels2(data, labels, partial_rate)
+        else:
+            partialY = generate_uniform_cv_candidate_labels(dataname, labels, partial_type)
+        partial_matrix_dataset = gen_index_dataset(data, partialY.float(), partialY.float())
+        partial_matrix_train_loader = torch.utils.data.DataLoader(
+            dataset=partial_matrix_dataset,
+            batch_size=batch_size,
+            shuffle=True,
+            num_workers=0)
     dim = int(data.reshape(-1).shape[0] / data.shape[0])
-    return partial_matrix_train_loader, data, partialY, dim
+    return partial_matrix_train_loader, partialY, dim
 
 """
 First attempt for clustering-based Partial Label Generation
@@ -487,23 +513,43 @@ def generate_cluster_based_candidate_labels(data, train_labels):
     print("Finish Generating Candidate Label Sets!\n")
     return partialY
 
+def generate_cluster_based_candidate_labels2(data, true_labels, partial_rate):
+    if torch.min(true_labels) > 1:
+        raise RuntimeError('testError')
+    elif torch.min(true_labels) == 1:
+        true_labels = true_labels - 1
 
-def prepare_train_loaders_for_cluster_based_candidate_labels(
-        dataname, full_train_loader, batch_size, partial_type):
-    for i, (data, labels) in enumerate(full_train_loader):
-        K = torch.max(
-            labels
-        ) + 1  # K is number of classes, full_train_loader is full batch
-    partialY = generate_cluster_based_candidate_labels(data, labels)
-    partial_matrix_dataset = gen_index_dataset(data, partialY.float(),
-                                               partialY.float())
-    partial_matrix_train_loader = torch.utils.data.DataLoader(
-        dataset=partial_matrix_dataset,
-        batch_size=batch_size,
-        shuffle=True,
-        num_workers=0)
-    dim = int(data.reshape(-1).shape[0] / data.shape[0])
-    return partial_matrix_train_loader, data, partialY, dim
+    K = torch.max(true_labels) - torch.min(true_labels) + 1
+    n = true_labels.shape[0]
+
+    partialY = torch.zeros(n, K)
+    partialY[torch.arange(n), true_labels] = 1.0
+
+    # Clustering:
+    _,c,dim1,dim2 = data.shape
+    flattened_data = data.reshape((n, c*dim1*dim2))
+    X = flattened_data.numpy()
+
+    centroids = []
+    for i in range(K):
+        # find the centroid of the cluster
+        X_curr = X[true_labels == i]
+        centroid = np.mean(X_curr, axis=0)
+        centroids.append(centroid)
+    centroids = np.array(centroids)
+    sample_centroid_distances = dist(X, Y=centroids)
+
+    num_distractors = int(partial_rate*K)-1
+    for x in range(n):
+        candidate_distractors_sorted = list(np.argsort(sample_centroid_distances[x]))
+        distractors = candidate_distractors_sorted[:num_distractors]
+        if true_labels[x] in distractors:
+            distractors.append(candidate_distractors_sorted[num_distractors])            
+        partialY[x, distractors] = 1
+
+    print("Finished Generating Candidate Label Sets!\n")
+    return partialY
+
 
 
 def cifar100_sparse2coarse(targets, groups):

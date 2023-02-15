@@ -8,8 +8,8 @@ from models.model_mlp import Mlp
 from models.model_cnn import Cnn
 from models.model_resnet import Resnet
 from utils.utils_data import generate_real_dataloader, generate_synthetic_hypercube_dataloader
-from utils.utils_data import prepare_cv_datasets
-from utils.utils_data import prepare_train_loaders_for_uniform_cv_candidate_labels, prepare_train_loaders_for_cluster_based_candidate_labels
+from utils.utils_data import generate_cv_dataloader
+#from utils.utils_data import prepare_train_loaders_for_uniform_cv_candidate_labels, prepare_train_loaders_for_cluster_based_candidate_labels
 from utils.utils_algo import accuracy_check, confidence_update, confidence_update_lw, prob_check, ratio_check
 from utils.utils_loss import (rc_loss, cc_loss, lws_loss, 
                               log_prp_Loss as prp_loss, 
@@ -18,7 +18,6 @@ from utils.utils_loss import (rc_loss, cc_loss, lws_loss,
                               bi_prp_loss, bi_prp2_loss, bi_prp_nll_loss, nll_loss, democracy_loss)
 
 # TODO: read as argument
-CLUSTER_PLL = False
 NO_IMPROVEMENT_TOLERANCE=20
 
 
@@ -89,6 +88,12 @@ parser.add_argument('-res',
                     default="./results_cv_best",
                     type=str,
                     required=False)
+parser.add_argument('-cluster',
+                    help='whether to do classwise clustering',
+                    action=argparse.BooleanOptionalAction,
+                    default=False,
+                    type=bool,
+                    required=False)
 
 ## Synthetic data hyperparameters
 parser.add_argument('-prt', help='partial rate.', default=0.1, type=float, required=False)                  
@@ -137,31 +142,23 @@ torch.cuda.manual_seed_all(args.seed)
 device = torch.device("cuda:" + args.gpu if torch.cuda.is_available() else "cpu")
 
 if args.ds in ['birdac', 'lost']:
-    (partial_matrix_train_loader, train_loader, eval_loader, test_loader, partialY, dim, K) = generate_real_dataloader(args.ds, './data/realworld/', args.bs, 42)
-    train_givenY = partialY
-    train_givenY = torch.tensor(train_givenY)
+    (partial_matrix_train_loader, train_loader, eval_loader, test_loader, train_partial_Y, dim, K) = generate_real_dataloader(args.ds, './data/realworld/', args.bs, 42)
 
 elif args.ds in ['mnist', 'kmnist', 'fashion', 'cifar10', 'cifar100']:
-    (full_train_loader, train_loader, test_loader, ordinary_train_dataset, test_dataset, K) = prepare_cv_datasets(dataname=args.ds, batch_size=args.bs)
-    if CLUSTER_PLL:
-        (partial_matrix_train_loader, train_data, train_givenY, dim) = prepare_train_loaders_for_cluster_based_candidate_labels(
-        dataname=args.ds,
-        full_train_loader=full_train_loader,
-        batch_size=args.bs,
-        partial_type=args.pr)
-    else:
-        (partial_matrix_train_loader, train_data, train_givenY, dim) = prepare_train_loaders_for_uniform_cv_candidate_labels(
-        dataname=args.ds,
-        full_train_loader=full_train_loader,
-        batch_size=args.bs,
-        partial_type=args.pr)
+    (partial_matrix_train_loader, train_loader,
+     partial_matrix_valid_loader, valid_loader,
+     partial_matrix_test_loader, test_loader,
+     train_partial_Y, valid_partial_Y, test_partial_Y,
+     dim, K) = generate_cv_dataloader(dataname=args.ds, batch_size=args.bs, partial_rate = args.prt, partial_type=args.pr, cluster=args.cluster)
+    train_givenY = train_partial_Y
+        
 elif args.ds.startswith('synthetic'):
     (partial_matrix_train_loader, train_loader,
      partial_matrix_valid_loader, valid_loader,
      partial_matrix_test_loader, test_loader,
-     partialY, valid_partial_Y, test_partial_Y,
+     train_partial_Y, valid_partial_Y, test_partial_Y,
      dim, K) = generate_synthetic_hypercube_dataloader(args.prt, args.bs, args.dseed, num_classes=args.nc, num_samples=args.ns, feature_dim=args.nf, class_sep=args.csep)
-    train_givenY = partialY
+    train_givenY = train_partial_Y
     train_givenY = torch.tensor(train_givenY)
 
 if args.lo == 'rc':
