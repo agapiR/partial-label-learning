@@ -551,6 +551,55 @@ def generate_cluster_based_candidate_labels2(data, true_labels, partial_rate):
     return partialY
 
 
+def generate_cluster_based_candidate_labels3(data, true_labels, partial_rate, cluster_per_class=2):
+    if torch.min(true_labels) > 1:
+        raise RuntimeError('testError')
+    elif torch.min(true_labels) == 1:
+        true_labels = true_labels - 1
+
+    K = torch.max(true_labels) - torch.min(true_labels) + 1
+    assert K == 10    
+    n = true_labels.shape[0]
+
+    partialY = torch.zeros(n, K)
+    partialY[torch.arange(n), true_labels] = 1.0
+
+    # Clustering:
+    _,c,dim1,dim2 = data.shape
+    flattened_data = data.reshape((n, c*dim1*dim2))
+    X = flattened_data.numpy()
+    num_clusters = cluster_per_class*K 
+    kmeans = KMeans(n_clusters=num_clusters, random_state=0, n_init=1).fit(X)
+
+    # Get Centroids and Centroids' labels:
+    centroids = kmeans.cluster_centers_
+    cluster_membership = kmeans.labels_
+    y_centroids = np.empty(num_clusters)
+    for c in range(num_clusters):
+        # find the indices of the cluster members
+        cluster_members = np.where(cluster_membership == c)[0]
+        # find the true labels of the cluster members
+        cluster_members_labels = true_labels[cluster_members]
+        # find the domimant label(s)
+        cluster_dominant_label = np.bincount(cluster_members_labels).argmax()
+        # assign the dominant label as the label of the centroid
+        y_centroids[c] = cluster_dominant_label
+
+
+    # Generate Partial Labels:
+    sample_centroid_distances = dist(X, Y=centroids)
+    num_distractors = int(partial_rate*K)-1
+    for x in range(n):
+        candidate_distractors_sorted = list(np.argsort(sample_centroid_distances[x]))
+        distractors = candidate_distractors_sorted[:num_distractors]
+        # the distractor labels could contain duplicate labels and/or the true label
+        distractor_labels = y_centroids[distractors]         
+        partialY[x, distractor_labels] = 1
+
+    print("Finished Generating Candidate Label Sets!\n")
+    return partialY
+
+
 
 def cifar100_sparse2coarse(targets, groups):
     """Convert Pytorch CIFAR100 sparse targets to coarse targets.
