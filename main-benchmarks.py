@@ -20,6 +20,8 @@ from utils.utils_loss import (rc_loss, cc_loss, lws_loss,
 # TODO: read as argument
 NO_IMPROVEMENT_TOLERANCE=20
 
+print(sys.argv[1:], file=sys.stderr)
+
 
 parser = argparse.ArgumentParser()
 
@@ -89,10 +91,9 @@ parser.add_argument('-res',
                     type=str,
                     required=False)
 parser.add_argument('-cluster',
-                    help='whether to do classwise clustering',
-                    action=argparse.BooleanOptionalAction,
-                    default=False,
-                    type=bool,
+                    help='whether to do classwise clustering: 0/1/2/3',
+                    type=int,
+                    default=0,
                     required=False)
 
 ## Synthetic data hyperparameters

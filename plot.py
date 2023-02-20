@@ -81,9 +81,10 @@ def plot(directory, series, x_axis, outdir, metrics):
             sorted_pairs = sorted(zip(xs, ys))
             xs = [x for x, _ in sorted_pairs]
             ys  = [x for _, x in sorted_pairs]
-        
-            ys_max = [max(y) for y in ys]
-            ys_med = [round(median(y),2) for y in ys]
+
+            print("   {} {}\n          -> {}".format(s, xs, ys))
+            ys_max = [max(y, default=0.0) for y in ys]
+            ys_med = [round(median(y),2) if len(y) > 0 else 0.0 for y in ys]
         
             print("   ", s, xs, ys_max, ys_med, color)
             
@@ -101,9 +102,9 @@ def plot(directory, series, x_axis, outdir, metrics):
     # plt.clf()
 
 
-directory = "out/zs6"
+directory = "out/zs8"
 series = "lo"
-x_axes = ["prt", "csep"]
-outdir="plots/centroid_distance"
+x_axes = ["prt"]
+outdir="plots/cifar100_clustered3"
 for x_axis in x_axes:
     plot(directory, series, x_axis, outdir, metrics)

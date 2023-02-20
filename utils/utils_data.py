@@ -446,8 +446,12 @@ def prepare_cv_datasets_hyper(dataname, batch_size):
 def prepare_loaders_for_cv_candidate_labels(dataname, full_loader, batch_size, partial_rate, partial_type, cluster):
     for i, (data, labels) in enumerate(full_loader):
         # K = torch.max(labels) + 1  # K is number of classes, full_train_loader is full batch
-        if cluster:
+        if cluster==1:
+            partialY = generate_cluster_based_candidate_labels(data, labels)
+        if cluster==2:
             partialY = generate_cluster_based_candidate_labels2(data, labels, partial_rate)
+        if cluster==3:
+            partialY = generate_cluster_based_candidate_labels3(data, labels, partial_rate)
         else:
             partialY = generate_uniform_cv_candidate_labels(dataname, labels, partial_type)
         partial_matrix_dataset = gen_index_dataset(data, partialY.float(), partialY.float())
@@ -558,7 +562,7 @@ def generate_cluster_based_candidate_labels3(data, true_labels, partial_rate, cl
         true_labels = true_labels - 1
 
     K = torch.max(true_labels) - torch.min(true_labels) + 1
-    assert K == 10    
+    # assert K == 10    
     n = true_labels.shape[0]
 
     partialY = torch.zeros(n, K)
