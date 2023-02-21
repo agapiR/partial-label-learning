@@ -454,7 +454,8 @@ def prepare_loaders_for_cv_candidate_labels(dataname, full_loader, batch_size, p
             partialY = generate_cluster_based_candidate_labels3(data, labels, partial_rate)
         else:
             partialY = generate_uniform_cv_candidate_labels(dataname, labels, partial_type)
-        partial_matrix_dataset = gen_index_dataset(data, partialY.float(), partialY.float())
+        # partial_matrix_dataset = gen_index_dataset(data, partialY.float(), partialY.float())
+        partial_matrix_dataset = gen_index_dataset(data, partialY.float(), labels.float())
         partial_matrix_train_loader = torch.utils.data.DataLoader(
             dataset=partial_matrix_dataset,
             batch_size=batch_size,
