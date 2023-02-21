@@ -8,3 +8,5 @@ __pycache__/
 datacache/
 .idea/
 .ipynb_checkpoints/
+plots/*
+out/*
