@@ -1,0 +1,3 @@
+[submodule "egtsimplex"]
+	path = egtsimplex
+	url = git@github.com:marvinboe/egtsimplex.git

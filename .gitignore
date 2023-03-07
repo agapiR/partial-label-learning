@@ -4,6 +4,7 @@
 *.out
 *.txt
 *.pyc
+*.png
 __pycache__/
 datacache/
 .idea/
