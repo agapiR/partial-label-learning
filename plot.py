@@ -102,7 +102,7 @@ def plot(directory, series, x_axis, outdir, metrics):
     # plt.clf()
 
 
-directory = "out/zs8"
+directory = "out/zs9"
 series = "lo"
 x_axes = ["prt"]
 outdir="plots/cifar100_clustered3"
