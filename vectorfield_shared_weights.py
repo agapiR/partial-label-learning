@@ -116,13 +116,25 @@ def show_vector_field(losstypes, outfile, ys_list, in_dim=5, modeltype='linear')
     plt.savefig(outfile)
 
     
-losstypes=["prp", "nll"] #"prp1"
+losstypes=["prp", "nll"]
 
-# show_vector_field(losstypes,"plots/vectorfields_shared_weights_3AB_1AC_3BC.png", ys_list=[[1,1,0],[1,1,0],[1,1,0],
-#                                                                                             [1,0,1],
-#                                                                                             [0,1,1],[0,1,1],[0,1,1]])
-# show_vector_field(losstypes,"plots/vectorfields_shared_weights_3AB_1AC_1BC.png", ys_list=[[1,1,0],[1,1,0],[1,1,0],
-#                                                                                             [1,0,1],
-#                                                                                             [0,1,1]])
 
-show_vector_field(losstypes,"plots/vectorfields_shared_weights_1AB_1AC.png", ys_list=[[1,1,0], [1,0,1]])
+# Single Sample Dataset
+
+show_vector_field(losstypes,"plots/vectorfields_shared_weights_1AB.png", ys_list=[[1,1,0]])
+
+# Consistent Datasets
+
+show_vector_field(losstypes,"plots/vectorfields_shared_weights_1AB_1AC.png", ys_list=[[1,1,0],[1,0,1]])
+show_vector_field(losstypes,"plots/vectorfields_shared_weights_2AB_1AC.png", ys_list=[[1,1,0],[1,1,0],[1,0,1]])
+
+# Inconsistent Datasets
+
+show_vector_field(losstypes,"plots/vectorfields_shared_weights_3AB_1AC_1BC.png", ys_list=[[1,1,0],[1,1,0],[1,1,0],
+                                                                            [1,0,1],
+                                                                            [0,1,1]])
+
+
+show_vector_field(losstypes,"plots/vectorfields_shared_weights_3AB_2AC_1BC.png", ys_list=[[1,1,0],[1,1,0],[1,1,0],
+                                                                            [1,0,1],[1,0,1],
+                                                                            [0,1,1]])
