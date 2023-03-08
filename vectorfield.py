@@ -151,32 +151,28 @@ def show_vector_field(losstypes, outfile, ys_list):
 
     
 # losstypes=["prp1", "prp2", "prp", "nll", "bi_prp", "merit0", "merit0.5", "merit1"]
-losstypes=["prp", "prp1", "nll"]
+losstypes=["prp1", "prp2", "prp", "nll"]
 
-# show_vector_field(losstypes,"plots/vectorfields_1AB.png", ys_list=[[1,1,0]])
-# show_vector_field(losstypes,"plots/vectorfields_1AB_1AC.png", ys_list=[[1,1,0],[1,0,1]])
-# show_vector_field(losstypes,"plots/vectorfields_2AB_1AC.png", ys_list=[[1,1,0],[1,1,0],[1,0,1]])
 
-show_vector_field(losstypes,"plots/vectorfields_3AB_1AC_3BC.png", ys_list=[[1,1,0],[1,1,0],[1,1,0],
+# Single Sample Dataset
+
+show_vector_field(losstypes,"plots/vectorfields_1AB.png", ys_list=[[1,1,0]])
+
+# Consistent Datasets
+
+show_vector_field(losstypes,"plots/vectorfields_1AB_1AC.png", ys_list=[[1,1,0],[1,0,1]])
+show_vector_field(losstypes,"plots/vectorfields_2AB_1AC.png", ys_list=[[1,1,0],[1,1,0],[1,0,1]])
+
+# Inconsistent Datasets
+
+show_vector_field(losstypes,"plots/vectorfields_3AB_1AC_1BC.png", ys_list=[[1,1,0],[1,1,0],[1,1,0],
                                                                             [1,0,1],
-                                                                            [0,1,1],[0,1,1],[0,1,1]])
+                                                                            [0,1,1]])
 
 
-# show_vector_field(losstypes,"plots/vectorfields_2AB_1AC_1BC.png", ys_list=[[1,1,0],[1,1,0],[1,0,1],[0,1,1]])
-# show_vector_field(losstypes,"plots/vectorfields_3AB_1AC_1BC.png", ys_list=[[1,1,0],[1,1,0],[1,1,0],[1,0,1],[0,1,1]])
-# show_vector_field(losstypes,"plots/vectorfields_4AB_1AC_1BC.png", ys_list=[[1,1,0],[1,1,0],[1,1,0],[1,1,0],[1,0,1],[0,1,1]])
-# show_vector_field(losstypes,"plots/vectorfields_8AB_1AC_1BC.png", ys_list=[[1,1,0],[1,1,0],[1,1,0],[1,1,0],[1,1,0],[1,1,0],[1,1,0],[1,1,0],[1,0,1],[0,1,1]])
-
-# show_vector_field(losstypes,"plots/vectorfields_4AB_1AC.png", ys_list=[[1,1,0],[1,1,0],[1,1,0],[1,1,0],[1,0,1]])
-# show_vector_field(losstypes,"plots/vectorfields_5AB_1AC.png", ys_list=[[1,1,0],[1,1,0],[1,1,0],[1,1,0],[1,1,0],[1,0,1]])
-# show_vector_field(losstypes,"plots/vectorfields_6AB_1AC.png", ys_list=[[1,1,0],[1,1,0],[1,1,0],[1,1,0],[1,1,0],[1,1,0],[1,0,1]])
-# show_vector_field(losstypes,"plots/vectorfields_7AB_1AC.png", ys_list=[[1,1,0],[1,1,0],[1,1,0],[1,1,0],[1,1,0],[1,1,0],[1,1,0],[1,0,1]])
-# show_vector_field(losstypes,"plots/vectorfields_8AB_1AC.png", ys_list=[[1,1,0],[1,1,0],[1,1,0],[1,1,0],[1,1,0],[1,1,0],[1,1,0],[1,1,0],[1,0,1]])
-# show_vector_field(losstypes,"plots/vectorfields_9AB_1AC.png", ys_list=[[1,1,0],[1,1,0],[1,1,0],[1,1,0],[1,1,0],[1,1,0],[1,1,0],[1,1,0],[1,1,0],[1,0,1]])
-# show_vector_field(losstypes,"plots/vectorfields_10AB_1AC.png", ys_list=[[1,1,0],[1,1,0],[1,1,0],[1,1,0],[1,1,0],[1,1,0],[1,1,0],[1,1,0],[1,1,0],[1,1,0],[1,0,1]])
-# show_vector_field(losstypes,"plots/vectorfields_20AB_1AC.png", ys_list=[[1,1,0],[1,1,0],[1,1,0],[1,1,0],[1,1,0],[1,1,0],[1,1,0],[1,1,0],[1,1,0],[1,1,0],
-#                                                                         [1,1,0],[1,1,0],[1,1,0],[1,1,0],[1,1,0],[1,1,0],[1,1,0],[1,1,0],[1,1,0],[1,1,0],
-#                                                                         [1,0,1]])
+show_vector_field(losstypes,"plots/vectorfields_3AB_2AC_1BC.png", ys_list=[[1,1,0],[1,1,0],[1,1,0],
+                                                                            [1,0,1],[1,0,1],
+                                                                            [0,1,1]])
 
 
 # logits = np.array([1, 0.5, 10])
