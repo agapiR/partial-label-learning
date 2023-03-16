@@ -19,7 +19,8 @@ colormap = {
 }
 
 def regression(model, input, target_output, epochs=100, lr=0.01, weight_decay=0.1):
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
+    # optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
+    optimizer = torch.optim.SGD(model.parameters(), lr=lr, weight_decay=weight_decay, momentum=0.9)
     mse = nn.MSELoss()
 
     model.train()
@@ -31,7 +32,8 @@ def regression(model, input, target_output, epochs=100, lr=0.01, weight_decay=0.
         loss.backward()
         optimizer.step()
         accuracy_train = loss.item()
-
+        
+    # print("Regression result: {} -> {}".format(input.detach().numpy(force=True), loss.detach().numpy(force=False)))
     return model, accuracy_train
 
 
@@ -93,8 +95,9 @@ def show_vector_field(losstypes, outfile, ys_list, in_dim=100, hid_dim=10, out_d
     for i, losstype in enumerate(losstypes):
 
         def f(x,t):
-            if np.min(x) <=0:
+            if np.min(x) <= 1e-5:
                 return [0.0, 0.0, 0.0]
+
             
             probs = np.array(x)
             logits = np.log(np.maximum(probs,1e-15))
@@ -144,6 +147,18 @@ def show_vector_field(losstypes, outfile, ys_list, in_dim=100, hid_dim=10, out_d
 
     
 losstypes=["prp", "nll"]
+
+ys_list=[[1,1,0],[1,0,1],[1,1,0]]
+modeltypes = ["mlp", "linear"]
+in_dims = [5, 20, 100]
+hidden_dims = [2, 10, 100]
+for modeltype in modeltypes:
+    for in_dim in in_dims:
+        for hidden_dim in hidden_dims:
+            outfile = "plots/vectorfields_2AB_1AC_{}_{}_{}.png".format(modeltype, in_dim, hidden_dim)
+            print("\n---------------")
+            print(outfile)
+            show_vector_field(losstypes, outfile , ys_list=ys_list, in_dim=in_dim, hidden_dim=hidden_dim, modeltype=modeltype)
 
 
 # TODO: 
