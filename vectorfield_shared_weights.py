@@ -19,7 +19,8 @@ colormap = {
 }
 
 def regression(model, input, target_output, epochs=100, lr=0.01, weight_decay=0.1):
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
+    # optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
+    optimizer = torch.optim.SGD(model.parameters(), lr=lr, weight_decay=weight_decay, momentum=0.9)
     mse = nn.MSELoss()
 
     model.train()
@@ -31,7 +32,8 @@ def regression(model, input, target_output, epochs=100, lr=0.01, weight_decay=0.
         loss.backward()
         optimizer.step()
         accuracy_train = loss.item()
-
+        
+    # print("Regression result: {} -> {}".format(input.detach().numpy(force=True), loss.detach().numpy(force=False)))
     return model, accuracy_train
 
 
@@ -76,7 +78,7 @@ def update(losstype, model, input, ys_list, lr=0.1):
 
     return logits2, probgrad
     
-def show_vector_field(losstypes, outfile, ys_list, in_dim=5, modeltype='linear'):
+def show_vector_field(losstypes, outfile, ys_list, in_dim=5, hidden_dim=2, modeltype='linear'):
     
     plt.autoscale(False)
 
@@ -88,19 +90,20 @@ def show_vector_field(losstypes, outfile, ys_list, in_dim=5, modeltype='linear')
     for i, losstype in enumerate(losstypes):
 
         def f(x,t):
-            if np.min(x) <=0:
+            if np.min(x) <= 1e-5:
                 return [0.0, 0.0, 0.0]
+
             
             probs = np.array(x)
             logits = np.log(np.maximum(probs,1e-15))
             if modeltype=='linear':
-                model = deep_linear_model(in_dim, hidden_dim=2, output_dim=3)
+                model = deep_linear_model(in_dim, hidden_dim=hidden_dim, output_dim=3)
             else:
-                model = mlp_model(in_dim, hidden_dim=2, output_dim=3)
+                model = mlp_model(in_dim, hidden_dim=hidden_dim, output_dim=3)
 
             # find model weights that correspond to the target logits
             model, mse = regression(model, torch.FloatTensor(input), torch.FloatTensor(logits).unsqueeze(0))
-            # print("MSE: ", mse)
+            print("MSE: {} -> {}".format(probs, mse))
 
             _, probgrad = update(losstype, model, torch.FloatTensor(input), torch.FloatTensor(Y))
             return probgrad
@@ -118,23 +121,35 @@ def show_vector_field(losstypes, outfile, ys_list, in_dim=5, modeltype='linear')
     
 losstypes=["prp", "nll"]
 
-
-# Single Sample Dataset
-
-show_vector_field(losstypes,"plots/vectorfields_shared_weights_1AB.png", ys_list=[[1,1,0]])
-
-# Consistent Datasets
-
-show_vector_field(losstypes,"plots/vectorfields_shared_weights_1AB_1AC.png", ys_list=[[1,1,0],[1,0,1]])
-show_vector_field(losstypes,"plots/vectorfields_shared_weights_2AB_1AC.png", ys_list=[[1,1,0],[1,1,0],[1,0,1]])
-
-# Inconsistent Datasets
-
-show_vector_field(losstypes,"plots/vectorfields_shared_weights_3AB_1AC_1BC.png", ys_list=[[1,1,0],[1,1,0],[1,1,0],
-                                                                            [1,0,1],
-                                                                            [0,1,1]])
+ys_list=[[1,1,0],[1,0,1],[1,1,0]]
+modeltypes = ["mlp", "linear"]
+in_dims = [5, 20, 100]
+hidden_dims = [2, 10, 100]
+for modeltype in modeltypes:
+    for in_dim in in_dims:
+        for hidden_dim in hidden_dims:
+            outfile = "plots/vectorfields_2AB_1AC_{}_{}_{}.png".format(modeltype, in_dim, hidden_dim)
+            print("\n---------------")
+            print(outfile)
+            show_vector_field(losstypes, outfile , ys_list=ys_list, in_dim=in_dim, hidden_dim=hidden_dim, modeltype=modeltype)
 
 
-show_vector_field(losstypes,"plots/vectorfields_shared_weights_3AB_2AC_1BC.png", ys_list=[[1,1,0],[1,1,0],[1,1,0],
-                                                                            [1,0,1],[1,0,1],
-                                                                            [0,1,1]])
+# # Single Sample Dataset
+
+# show_vector_field(losstypes,"plots/vectorfields_shared_weights_1AB.png", ys_list=[[1,1,0]])
+
+# # Consistent Datasets
+
+# show_vector_field(losstypes,"plots/vectorfields_shared_weights_1AB_1AC.png", ys_list=[[1,1,0],[1,0,1]])
+# show_vector_field(losstypes,"plots/vectorfields_shared_weights_2AB_1AC.png", ys_list=[[1,1,0],[1,1,0],[1,0,1]])
+
+# # Inconsistent Datasets
+
+# show_vector_field(losstypes,"plots/vectorfields_shared_weights_3AB_1AC_1BC.png", ys_list=[[1,1,0],[1,1,0],[1,1,0],
+#                                                                             [1,0,1],
+#                                                                             [0,1,1]])
+
+
+# show_vector_field(losstypes,"plots/vectorfields_shared_weights_3AB_2AC_1BC.png", ys_list=[[1,1,0],[1,1,0],[1,1,0],
+#                                                                             [1,0,1],[1,0,1],
+#                                                                             [0,1,1]])
