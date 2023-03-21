@@ -145,6 +145,9 @@ def show_vector_field(losstypes, outfile, ys_list, in_dim=100, hid_dim=10, out_d
 
     plt.savefig(outfile)
 
+
+save_dir = "plots/vectorfields"
+
     
 losstypes=["prp", "nll"]
 
@@ -155,11 +158,10 @@ hidden_dims = [2, 10, 100]
 for modeltype in modeltypes:
     for in_dim in in_dims:
         for hidden_dim in hidden_dims:
-            outfile = "plots/vectorfields_2AB_1AC_{}_{}_{}.png".format(modeltype, in_dim, hidden_dim)
+            outfile = "{}/vectorfields_2AB_1AC_{}_{}_{}.png".format(save_dir, modeltype, in_dim, hidden_dim)
             print("\n---------------")
             print(outfile)
             show_vector_field(losstypes, outfile , ys_list=ys_list, in_dim=in_dim, hidden_dim=hidden_dim, modeltype=modeltype)
-
 
 # TODO: 
 # (*) Previously, model dimensions were: 5 - 2 - 3, now default is 100 - 10 - 3
@@ -168,21 +170,21 @@ for modeltype in modeltypes:
 
 # ## Single Sample Dataset
 
-# show_vector_field(losstypes,"plots/vectorfields_shared_weights_1AB.png", ys_list=[[1,1,0]])
+# show_vector_field(losstypes,f"{save_dir}/vectorfields_shared_weights_1AB.png", ys_list=[[1,1,0]])
 
 # ## Consistent Datasets
 
-# show_vector_field(losstypes,"plots/vectorfields_shared_weights_1AB_1AC.png", ys_list=[[1,1,0],[1,0,1]])
-# show_vector_field(losstypes,"plots/vectorfields_shared_weights_2AB_1AC.png", ys_list=[[1,1,0],[1,1,0],[1,0,1]])
+# show_vector_field(losstypes,f"{save_dir}/vectorfields_shared_weights_1AB_1AC.png", ys_list=[[1,1,0],[1,0,1]])
+# show_vector_field(losstypes,f"{save_dir}/vectorfields_shared_weights_2AB_1AC.png", ys_list=[[1,1,0],[1,1,0],[1,0,1]])
 
 # ## Inconsistent Datasets
 
-# show_vector_field(losstypes,"plots/vectorfields_shared_weights_3AB_1AC_1BC.png", ys_list=[[1,1,0],[1,1,0],[1,1,0],
+# show_vector_field(losstypes,f"{save_dir}/vectorfields_shared_weights_3AB_1AC_1BC.png", ys_list=[[1,1,0],[1,1,0],[1,1,0],
 #                                                                             [1,0,1],
 #                                                                             [0,1,1]])
 
 
-# show_vector_field(losstypes,"plots/vectorfields_shared_weights_3AB_2AC_1BC.png", ys_list=[[1,1,0],[1,1,0],[1,1,0],
+# show_vector_field(losstypes,f"{save_dir}/vectorfields_shared_weights_3AB_2AC_1BC.png", ys_list=[[1,1,0],[1,1,0],[1,1,0],
 #                                                                             [1,0,1],[1,0,1],
 #                                                                             [0,1,1]])
 
@@ -190,34 +192,29 @@ for modeltype in modeltypes:
 # ## Experiments with more outputs
 
 # show_vector_field(losstypes,
-#                 "plots/vectorfields_shared_weights_1AB_1AC_mlp_10_out.png", 
+#                 f"{save_dir}/vectorfields_shared_weights_1AB_1AC_mlp_10_out.png", 
 #                 ys_list=[[1,1,0],[1,0,1]],
 #                 in_dim=100, hid_dim=10, out_dim=10, modeltype='mlp', 
 #                 fit_trials=5, free_logit_trials=5)
 
 # show_vector_field(losstypes,
-#                 "plots/vectorfields_shared_weights_1AB_1AC_mlp_3_out.png", 
+#                 f"{save_dir}/vectorfields_shared_weights_1AB_1AC_mlp_3_out.png", 
 #                 ys_list=[[1,1,0],[1,0,1]],
 #                 in_dim=100, hid_dim=10, out_dim=3, modeltype='mlp', 
 #                 fit_trials=5, free_logit_trials=1)
 
-show_vector_field(losstypes,
-                "plots/vectorfields_shared_weights_1AB_1AC_mlp_10_out_1_fit_trial.png", 
-                ys_list=[[1,1,0],[1,0,1]],
-                in_dim=100, hid_dim=10, out_dim=10, modeltype='mlp', 
-                fit_trials=2, free_logit_trials=5)
 
 # ## Experiments with more trials + different models + inconsistent datasets
 
 # for model in ['mlp', 'linear']:
-#     show_vector_field(losstypes,f"plots/vectorfields_shared_weights_3AB_1AC_1BC_{model}.png", 
+#     show_vector_field(losstypes,f"{save_dir}/vectorfields_shared_weights_3AB_1AC_1BC_{model}.png", 
 #                                 ys_list=[[1,1,0],[1,1,0],[1,1,0],
 #                                         [1,0,1],
 #                                         [0,1,1]],
 #                                 in_dim=100, hid_dim=10, out_dim=3, modeltype=model, 
 #                                 fit_trials=5, free_logit_trials=1)
 
-#     show_vector_field(losstypes,f"plots/vectorfields_shared_weights_3AB_2AC_1BC_{model}.png", 
+#     show_vector_field(losstypes,f"{save_dir}/vectorfields_shared_weights_3AB_2AC_1BC_{model}.png", 
 #                                 ys_list=[[1,1,0],[1,1,0],[1,1,0],
 #                                 [1,0,1],[1,0,1],
 #                                 [0,1,1]],

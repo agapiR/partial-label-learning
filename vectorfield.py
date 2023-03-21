@@ -149,6 +149,8 @@ def show_vector_field(losstypes, outfile, ys_list):
 
     plt.savefig(outfile)
 
+
+save_dir = "plots/vectorfields"
     
 # losstypes=["prp1", "prp2", "prp", "nll", "bi_prp", "merit0", "merit0.5", "merit1"]
 losstypes=["prp1", "prp2", "prp", "nll"]
@@ -156,21 +158,21 @@ losstypes=["prp1", "prp2", "prp", "nll"]
 
 # Single Sample Dataset
 
-show_vector_field(losstypes,"plots/vectorfields_1AB.png", ys_list=[[1,1,0]])
+show_vector_field(losstypes,f"{save_dir}/vectorfields_1AB.png", ys_list=[[1,1,0]])
 
 # Consistent Datasets
 
-show_vector_field(losstypes,"plots/vectorfields_1AB_1AC.png", ys_list=[[1,1,0],[1,0,1]])
-show_vector_field(losstypes,"plots/vectorfields_2AB_1AC.png", ys_list=[[1,1,0],[1,1,0],[1,0,1]])
+show_vector_field(losstypes,f"{save_dir}/vectorfields_1AB_1AC.png", ys_list=[[1,1,0],[1,0,1]])
+show_vector_field(losstypes,f"{save_dir}/vectorfields_2AB_1AC.png", ys_list=[[1,1,0],[1,1,0],[1,0,1]])
 
 # Inconsistent Datasets
 
-show_vector_field(losstypes,"plots/vectorfields_3AB_1AC_1BC.png", ys_list=[[1,1,0],[1,1,0],[1,1,0],
+show_vector_field(losstypes,f"{save_dir}/vectorfields_3AB_1AC_1BC.png", ys_list=[[1,1,0],[1,1,0],[1,1,0],
                                                                             [1,0,1],
                                                                             [0,1,1]])
 
 
-show_vector_field(losstypes,"plots/vectorfields_3AB_2AC_1BC.png", ys_list=[[1,1,0],[1,1,0],[1,1,0],
+show_vector_field(losstypes,f"{save_dir}/vectorfields_3AB_2AC_1BC.png", ys_list=[[1,1,0],[1,1,0],[1,1,0],
                                                                             [1,0,1],[1,0,1],
                                                                             [0,1,1]])
 
@@ -181,5 +183,5 @@ show_vector_field(losstypes,"plots/vectorfields_3AB_2AC_1BC.png", ys_list=[[1,1,
 #     logits = update(losstype, logits, ys)
 
 # for probC in [0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.99]:
-#     outfile = "plots/horizontal_line_probC-{}.png".format(probC)
+#     outfile = f"{save_dir}/horizontal_line_probC-{}.png".format(probC)
 #     show_horizontal_line(losstypes, probC, outfile)
