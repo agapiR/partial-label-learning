@@ -97,7 +97,6 @@ def show_vector_field(losstypes, outfile, ys_list, in_dim=100, hid_dim=10, out_d
         def f(x,t):
             if np.min(x) <= 1e-5:
                 return [0.0, 0.0, 0.0]
-
             
             probs = np.array(x)
             logits = np.log(np.maximum(probs,1e-15))
@@ -112,7 +111,7 @@ def show_vector_field(losstypes, outfile, ys_list, in_dim=100, hid_dim=10, out_d
             for _ in range(free_logit_trials):
                 # assign random values to the free logits
                 target_sum = logits.min()                                       # free logits sum to the min target logit
-                free_logits = np.random.rand(out_dim-3) + 1e-8                # create random numbers
+                free_logits = np.random.rand(out_dim-3) + 1e-8                  # create random numbers
                 free_logits = free_logits/free_logits.sum() * target_sum        # force them to sum to target_sum
                 logits_full = np.concatenate((logits, free_logits), axis=None)  # append free logits to target logits
                 target_full = np.concatenate((Y, np.zeros((Y.shape[0],out_dim-3))), axis=1)
@@ -133,7 +132,7 @@ def show_vector_field(losstypes, outfile, ys_list, in_dim=100, hid_dim=10, out_d
             # calculate the probability gradient, as average of prob gradients for different free logit assignments
             probgrad = np.average(probgrad_l, axis=0)
             
-            return probgrad[:3]
+            return probgrad[:3] / (probgrad[:3].sum() + 1e-8)
         
         #initialize simplex_dynamics object with function
         dynamics=egtsimplex.simplex_dynamics(f)
@@ -151,17 +150,24 @@ save_dir = "plots/vectorfields"
     
 losstypes=["prp", "nll"]
 
-ys_list=[[1,1,0],[1,0,1],[1,1,0]]
+ys_list = [[1,1,0],[1,0,1]]         #[[1,1,0],[1,0,1],[1,1,0]]
 modeltypes = ["mlp", "linear"]
-in_dims = [5, 20, 100]
-hidden_dims = [2, 10, 100]
+in_dims = [10]                      #[5, 20, 100]
+hid_dims = [5]                      #[2, 10, 100]
+out_dims = [3, 10]
+fit_trials = 3
+free_logit_trials = 2
 for modeltype in modeltypes:
     for in_dim in in_dims:
-        for hidden_dim in hidden_dims:
-            outfile = "{}/vectorfields_2AB_1AC_{}_{}_{}.png".format(save_dir, modeltype, in_dim, hidden_dim)
-            print("\n---------------")
-            print(outfile)
-            show_vector_field(losstypes, outfile , ys_list=ys_list, in_dim=in_dim, hidden_dim=hidden_dim, modeltype=modeltype)
+        for hid_dim in hid_dims:
+            for out_dim in out_dims:
+                outfile = "{}/vectorfields_1AB_1AC_{}_{}_{}_{}_fit-{}_rand-{}.png".format(save_dir, modeltype, in_dim, hid_dim, out_dim, fit_trials, 1 if out_dim<=3 else free_logit_trials)
+                print("\n---------------")
+                print(outfile)
+                show_vector_field(losstypes, outfile , ys_list=ys_list, in_dim=in_dim, hid_dim=hid_dim, out_dim=3, modeltype=modeltype, fit_trials=5, free_logit_trials=1)
+
+
+
 
 # TODO: 
 # (*) Previously, model dimensions were: 5 - 2 - 3, now default is 100 - 10 - 3
