@@ -464,8 +464,10 @@ def prepare_loaders_for_cv_candidate_labels(dataname, full_loader, batch_size, p
     dim = int(data.reshape(-1).shape[0] / data.shape[0])
     return partial_matrix_train_loader, partialY, dim
 
+
+
 """
-First attempt for clustering-based Partial Label Generation
+Clustering-based Partial Label Generation for real classification datasets. 
 """
 def generate_cluster_based_candidate_labels(data, train_labels):
     if torch.min(train_labels) > 1:
@@ -530,7 +532,8 @@ def generate_cluster_based_candidate_labels2(data, true_labels, partial_rate):
     partialY = torch.zeros(n, K)
     partialY[torch.arange(n), true_labels] = 1.0
 
-    # Clustering:
+    # Clustering (1. Find centroid of each class as the average of the samples belonging in the class. 3. Select distractors as the labels of the closest centroids.)
+    #              Note, each label corresponds to exactly one centroid, and vice versa. 
     _,c,dim1,dim2 = data.shape
     flattened_data = data.reshape((n, c*dim1*dim2))
     X = flattened_data.numpy()
@@ -569,7 +572,8 @@ def generate_cluster_based_candidate_labels3(data, true_labels, partial_rate, cl
     partialY = torch.zeros(n, K)
     partialY[torch.arange(n), true_labels] = 1.0
 
-    # Clustering:
+    # Clustering (1. Apply kmeans 2. Label cluster centroids with the dominant label in their cluster. 3. Select distractors as the labels of the closest centroids.)
+    #              Note, each label may be associated with more than one centroids. Each centroid is assigned exactly one label. 
     _,c,dim1,dim2 = data.shape
     flattened_data = data.reshape((n, c*dim1*dim2))
     X = flattened_data.numpy()
@@ -603,7 +607,9 @@ def generate_cluster_based_candidate_labels3(data, true_labels, partial_rate, cl
 
     print("Finished Generating Candidate Label Sets!\n")
     return partialY
-
+"""
+End
+"""
 
 
 def cifar100_sparse2coarse(targets, groups):
