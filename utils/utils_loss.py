@@ -68,8 +68,9 @@ class h_prp_Loss(torch.nn.Module):
 
 
 class log_prp_Loss(torch.nn.Module):
-    def __init__(self):
+    def __init__(self, use_weighting=True):
         super(log_prp_Loss, self).__init__()
+        self.use_weighting = use_weighting
  
     def forward(self, inputs, targets, ispositive=True, multiplicities=None, debug=False):
 
@@ -104,9 +105,10 @@ class log_prp_Loss(torch.nn.Module):
         else:
             loss = loss*multiplicities.sum(1)
 
-        # input specific coefficient
-        coefficient = (1.0 - probs.sum(dim=1))
-        loss = coefficient.detach() * loss
+        if self.use_weighting:
+            # input specific coefficient
+            coefficient = (1.0 - probs.sum(dim=1))
+            loss = coefficient.detach() * loss
 
 
         loss = torch.mean(loss)
