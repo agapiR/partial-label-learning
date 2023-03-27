@@ -83,7 +83,7 @@ def update(losstype, model, input, ys_list, lr=0.1):
 
     return logits2, probgrad, probs, probs2
     
-def show_vector_field(losstypes, outfile, ys_list, in_dim=5, hidden_dim=2, modeltype='linear', output_dim=3, samples=100, min_total=0.1, max_total=0.9):
+def show_vector_field(losstypes, outfile, ys_list, in_dim=5, hidden_dim=2, modeltype='linear', output_dim=3, samples=100, min_total=0.1, max_total=0.9, hidden_layers=1):
 
     if output_dim > 3:
         ys_list = [np.pad(ys, (0, output_dim - 3)) for ys in ys_list]
@@ -107,7 +107,7 @@ def show_vector_field(losstypes, outfile, ys_list, in_dim=5, hidden_dim=2, model
             elif modeltype=='logit':
                 model = linear_model(in_dim, output_dim=output_dim)
             else:
-                model = mlp_model(in_dim, hidden_dim=hidden_dim, output_dim=output_dim)
+                model = mlp_model(in_dim, hidden_dim=hidden_dim, output_dim=output_dim, hidden_layers=hidden_layers)
                 
                                   
             if output_dim == 3:
@@ -136,7 +136,7 @@ def show_vector_field(losstypes, outfile, ys_list, in_dim=5, hidden_dim=2, model
                 probs_after = probs_after / probs_after.sum()
                 probgrad_all += (probs_after - probs_before)
             probgrad_all /= len(probs_list)
-            print("{} -> {} -> {} -> {}".format(x, probs, probs_before, probs_after))
+            # print("{} -> {} -> {} -> {}".format(x, probs, probs_before, probs_after))
             return probgrad_all
         
         #initialize simplex_dynamics object with function
@@ -161,12 +161,13 @@ ys_map={
     "1AB-1AC": [[1,1,0],[1,0,1]],
     }
 
-losstypes=["nll","prp", "prp_basic"]
-labels = ["1AB-1AC"]
-modeltypes = ["sigmoid"]
+losstypes=["nll","prp"]
+labels = ["1AB-1AC", "1AB"]
+modeltypes = ["mlp"]
 in_dims = [1]
-hidden_dims = [100]
-output_dims = [4,10]
+hidden_dims = [10]
+hidden_layers = [1,2,5,10]
+output_dims = [4]
 samples=1
 minmaxes=[0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
 for loss in losstypes:
@@ -175,14 +176,15 @@ for loss in losstypes:
         for modeltype in modeltypes:
             for in_dim in in_dims:
                 for hidden_dim in hidden_dims:
-                    for output_dim in output_dims:
-                        for minmax in minmaxes:
-                            outfile = "plots/tmp/vectorfields_{}_{}_{}_{}_{}_{}_{}.png".format(label, modeltype, in_dim, hidden_dim, output_dim, minmax, loss)
-                            print("\n---------------")
-                            print(outfile)
-                            show_vector_field([loss], outfile , ys_list=ys_list,
-                                              in_dim=in_dim, hidden_dim=hidden_dim,
-                                              modeltype=modeltype, output_dim=output_dim,
-                                              samples=samples, min_total=minmax, max_total=minmax)
-
+                    for hidden_layer in hidden_layers:
+                        for output_dim in output_dims:
+                            for minmax in minmaxes:
+                                outfile = "plots/tmp/vectorfields_{}_{}_{}_{}_{}_{}_{}_{}.png".format(label, modeltype, in_dim, hidden_dim, output_dim, minmax, loss, hidden_layer)
+                                print("\n---------------")
+                                print(outfile)
+                                show_vector_field([loss], outfile , ys_list=ys_list,
+                                                  in_dim=in_dim, hidden_dim=hidden_dim,
+                                                  modeltype=modeltype, output_dim=output_dim,
+                                                  samples=samples, min_total=minmax, max_total=minmax, hidden_layers=hidden_layer)
+                            
 

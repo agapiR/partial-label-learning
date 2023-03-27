@@ -23,7 +23,8 @@ def run_all(args, outdir, gpus, jobs_per_gpu=10):
         for command, outfile in parallel_tasks:
             my_env = os.environ.copy()
             my_env["CUDA_VISIBLE_DEVICES"] = str(gpus[curr_gpu_index])
-            print(command)
+            # print(command)
+            print(" ".join(command))
             handle = subprocess.Popen(command, env=my_env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             handles.append((handle,outfile))
             curr_gpu_index = (curr_gpu_index + 1) % num_gpus            

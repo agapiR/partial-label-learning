@@ -41,17 +41,37 @@ class deep_linear_model(nn.Module):
 
 
 class mlp_model(nn.Module):
-    def __init__(self, input_dim, hidden_dim, output_dim):
+    def __init__(self, input_dim, hidden_dim, output_dim, hidden_layers=1):
         super(mlp_model, self).__init__()
-        self.fc1 = nn.Linear(input_dim, hidden_dim)
-        self.relu1 = nn.ReLU()
-        self.fc2 = nn.Linear(hidden_dim, output_dim)
+        self.ls = []
+        previous_dim = input_dim
+        for i in range(hidden_layers+1):
+            if i < hidden_layers:
+                next_dim = hidden_dim
+            else:
+                next_dim = output_dim
+
+            layer = nn.Linear(previous_dim, next_dim)
+            self.dummy = layer
+            self.ls.append(layer)
+            self.add_module("hidden_layer"+str(i), layer)
+            if i < hidden_layers:
+                act = nn.ReLU()
+                self.add_module("act"+str(i), act)
+                self.ls.append(act)
+            previous_dim = next_dim
+        #self.ls.append(nn.Linear(hidden_dim, output_dim))
+        # self.fc1 = nn.Linear(input_dim, hidden_dim)
+        # self.relu1 = nn.ReLU()
+        # self.fc2 = nn.Linear(hidden_dim, output_dim)
 
     def forward(self, x):
         out = x.view(-1, self.num_flat_features(x))
-        out = self.fc1(out)
-        out = self.relu1(out)
-        out = self.fc2(out)
+        for layer in self.ls:
+            out = layer(out)
+        # out = self.fc1(out)
+        # out = self.relu1(out)
+        # out = self.fc2(out)
         return out
 
     def num_flat_features(self, x):

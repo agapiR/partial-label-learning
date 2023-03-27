@@ -11,7 +11,8 @@ from scipy.special import comb
 from sklearn.preprocessing import StandardScaler, normalize
 from sklearn.model_selection import train_test_split
 from sklearn.cluster import KMeans
-from sklearn.metrics.pairwise import cosine_distances as dist
+from sklearn.metrics.pairwise import cosine_distances as cdist
+from sklearn.metrics.pairwise import euclidean_distances as edist
 from synthetic_classification_generator import make_classification
 
 
@@ -448,10 +449,12 @@ def prepare_loaders_for_cv_candidate_labels(dataname, full_loader, batch_size, p
         # K = torch.max(labels) + 1  # K is number of classes, full_train_loader is full batch
         if cluster==1:
             partialY = generate_cluster_based_candidate_labels(data, labels)
-        if cluster==2:
+        elif cluster==2:
             partialY = generate_cluster_based_candidate_labels2(data, labels, partial_rate)
-        if cluster==3:
+        elif cluster==3:
             partialY = generate_cluster_based_candidate_labels3(data, labels, partial_rate)
+        elif cluster==4:
+            partialY = generate_instance_based_candidate_labels(data, labels, partial_rate)
         else:
             partialY = generate_uniform_cv_candidate_labels(dataname, labels, partial_type)
         # partial_matrix_dataset = gen_index_dataset(data, partialY.float(), partialY.float())
@@ -545,7 +548,7 @@ def generate_cluster_based_candidate_labels2(data, true_labels, partial_rate):
         centroid = np.mean(X_curr, axis=0)
         centroids.append(centroid)
     centroids = np.array(centroids)
-    sample_centroid_distances = dist(X, Y=centroids)
+    sample_centroid_distances = cdist(X, Y=centroids)
 
     num_distractors = int(partial_rate*K)-1
     for x in range(n):
@@ -596,7 +599,7 @@ def generate_cluster_based_candidate_labels3(data, true_labels, partial_rate, cl
 
 
     # Generate Partial Labels:
-    sample_centroid_distances = dist(X, Y=centroids)
+    sample_centroid_distances = cdist(X, Y=centroids)
     num_distractors = int(partial_rate*K)-1
     for x in range(n):
         candidate_distractors_sorted = list(np.argsort(sample_centroid_distances[x]))
@@ -607,6 +610,44 @@ def generate_cluster_based_candidate_labels3(data, true_labels, partial_rate, cl
 
     print("Finished Generating Candidate Label Sets!\n")
     return partialY
+
+def generate_instance_based_candidate_labels(data, true_labels, partial_rate):
+    if torch.min(true_labels) > 1:
+        raise RuntimeError('testError')
+    elif torch.min(true_labels) == 1:
+        true_labels = true_labels - 1
+
+    K = torch.max(true_labels) - torch.min(true_labels) + 1
+    n = true_labels.shape[0]
+
+
+    # find distances to nearest instances from each class d_1...d_k
+    # compute normalised probability vector <alpha/d_i>
+    # sample partial_rate * K distractors
+    _,c,dim1,dim2 = data.shape
+    flattened_data = data.reshape((n, c*dim1*dim2))
+    X = flattened_data.numpy()
+
+    dist_matrix = torch.zeros(n, K)
+    for i in range(K):
+        X_k = X[true_labels==i]
+        ds = cdist(X,X_k)
+        ds = ds.min(axis=1)
+        dist_matrix[:,i] = torch.tensor(ds)
+    prob_matrix = 1 / dist_matrix ** 2
+    prob_matrix[torch.arange(n), true_labels] = 0.0
+    prob_matrix /= prob_matrix.sum(dim=1, keepdim=True)
+    distractors = torch.multinomial(prob_matrix, int(partial_rate * K), replacement=False) #  TODO maybe with replacement?
+
+    # Generate Partial Labels:
+    partialY = torch.zeros(n, K)
+    partialY[torch.arange(n), true_labels] = 1.0
+    for i in range(n):
+        partialY[i, distractors[i]] = 1
+    print("Finished Generating Instance based Candidate Label Sets!\n")
+    return partialY
+
+
 """
 End
 """
@@ -777,7 +818,7 @@ def generate_synthetic_hypercube_data(partial_rate, seed,
     partial_y = np.zeros((num_samples, num_classes))
     partial_y[np.arange(y.size), y] = 1
     num_distractors = int(partial_rate*num_classes)
-    sample_centroid_distances = dist(X, Y=centroids)
+    sample_centroid_distances = cdist(X, Y=centroids)
     for x in range(num_samples):
         candidate_distractors_sorted = list(np.argsort(sample_centroid_distances[x]))
         distractors = candidate_distractors_sorted[:num_distractors]
