@@ -95,6 +95,11 @@ parser.add_argument('-cluster',
                     type=int,
                     default=0,
                     required=False)
+parser.add_argument('-num_groups',
+                    help='size of the label set partition for drawing distractors',
+                    type=int,
+                    default=10,
+                    required=False)
 
 ## Synthetic data hyperparameters
 parser.add_argument('-prt', help='partial rate.', default=0.1, type=float, required=False)                  
@@ -150,7 +155,7 @@ elif args.ds in ['mnist', 'kmnist', 'fashion', 'cifar10', 'cifar100']:
      partial_matrix_valid_loader, valid_loader,
      partial_matrix_test_loader, test_loader,
      train_partial_Y, valid_partial_Y, test_partial_Y,
-     dim, K) = generate_cv_dataloader(dataname=args.ds, batch_size=args.bs, partial_rate = args.prt, partial_type=args.pr, cluster=args.cluster)
+     dim, K) = generate_cv_dataloader(dataname=args.ds, batch_size=args.bs, partial_rate = args.prt, partial_type=args.pr, cluster=args.cluster, num_groups=args.num_groups)
     train_givenY = train_partial_Y
         
 elif args.ds.startswith('synthetic'):
@@ -177,6 +182,8 @@ elif args.lo == 'lws':
     loss_fn = lws_loss
 elif args.lo == 'prp':
     loss_fn = prp_loss()
+elif args.lo == 'prp_basic':
+    loss_fn = prp_loss(use_weighting=False)
 elif args.lo == 'hprp':
     loss_fn = h_prp_loss(h=args.alpha)
 elif args.lo == 'll':

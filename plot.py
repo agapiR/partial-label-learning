@@ -23,10 +23,13 @@ is_float = {
     "nf": True,
     "ns": True,
     "csep": True,
+    "lr": True,
+    "num_groups": True,
 }
 
 color_map = {
     "prp": "red",
+    "prp_basic": "c",
     "nll": "b",
     "cc":"b",
     "lws": "g",
@@ -37,7 +40,7 @@ color_map = {
     "bi_prp_nll":"m"
     }
 
-def plot(directory, series, x_axis, outdir, metrics):
+def plot(directory, series, x_axis, outdir, metrics, filtermap={}, prefix=""):
     result = {}
     for m in metrics:
         result[m] = {}
@@ -47,8 +50,15 @@ def plot(directory, series, x_axis, outdir, metrics):
             args = match.groups()[0]
             args = args.split('-')[1:]
             argdict = {}
+            skipfile = False
             for i in range(0, len(args), 2):
                 argdict[args[i]] = args[i+1].rstrip('_')
+                if args[i] in filtermap and argdict[args[i]] != filtermap[args[i]]:
+                    # print(args[i], argdict[args[i]], filtermap[args[i]])
+                    skipfile=True
+            if skipfile:
+                continue
+
             result_s = argdict[series]
             result_x = argdict[x_axis]
             if is_float[x_axis]:
@@ -96,15 +106,38 @@ def plot(directory, series, x_axis, outdir, metrics):
             axs[i%3, i//3].yaxis.label.set_fontsize(28)
             axs[i%3, i//3].legend()
     
-    outfile = "{}/plot_{}_{}.png".format(outdir, series, x_axis)
+    outfile = "{}/plot_{}{}_{}.png".format(outdir, prefix, series, x_axis)
     os.makedirs(outdir, exist_ok=True)
     plt.savefig(outfile)
     # plt.clf()
 
 
-directory = "out/zs9"
-series = "lo"
-x_axes = ["prt"]
-outdir="plots/cifar100_clustered3"
-for x_axis in x_axes:
-    plot(directory, series, x_axis, outdir, metrics)
+def exp15():
+    directory = "out/zs15"
+    series = "lo"
+    x_axes = ["lr"]
+    outdir="plots/cifar100_biprp_lr"
+    for x_axis in x_axes:
+        plot(directory, series, x_axis, outdir, metrics)
+
+def exp14():
+    directory = "out/zs14"
+    series = "lo"
+    x_axes = ["num_groups"]
+    outdir="plots/cifar100_groups"
+    for prt in ["0.9", "0.8", "0.7", "0.6", "0.5", "0.4", "0.3", "0.2", "0.1"]:        
+        filtermap = {
+            "prt":prt,
+        }
+        for x_axis in x_axes:
+            plot(directory, series, x_axis, outdir, metrics, filtermap, prefix="prt-{}_".format(prt))
+        
+    filtermap = {
+    }
+    x_axes = ["prt"]
+    outdir="plots/cifar100_groups"
+    for x_axis in x_axes:
+        plot(directory, series, x_axis, outdir, metrics, filtermap)
+    
+
+exp14()

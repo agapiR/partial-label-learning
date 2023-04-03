@@ -261,10 +261,10 @@ def generate_uniform_cv_candidate_labels(dataname, train_labels, partial_type):
     return partialY
 
 
-def generate_cv_dataloader(dataname, batch_size, partial_rate, partial_type, cluster):
+def generate_cv_dataloader(dataname, batch_size, partial_rate, partial_type, cluster, num_groups=10):
     (full_train_loader, full_test_loader, train_loader, test_loader, ordinary_train_dataset, test_dataset, num_classes) = prepare_cv_datasets(dataname, batch_size)
-    partial_matrix_train_loader, train_partial_Y, dim = prepare_loaders_for_cv_candidate_labels(dataname, full_train_loader, batch_size, partial_rate, partial_type, cluster)
-    partial_matrix_test_loader, test_partial_Y, dim = prepare_loaders_for_cv_candidate_labels(dataname, full_test_loader, batch_size, partial_rate, partial_type, cluster)
+    partial_matrix_train_loader, train_partial_Y, dim = prepare_loaders_for_cv_candidate_labels(dataname, full_train_loader, batch_size, partial_rate, partial_type, cluster, num_groups)
+    partial_matrix_test_loader, test_partial_Y, dim = prepare_loaders_for_cv_candidate_labels(dataname, full_test_loader, batch_size, partial_rate, partial_type, cluster, num_groups)
 
     # TODO
     partial_matrix_valid_loader = partial_matrix_test_loader
@@ -444,7 +444,7 @@ def prepare_cv_datasets_hyper(dataname, batch_size):
             validationset, num_classes)
 
 
-def prepare_loaders_for_cv_candidate_labels(dataname, full_loader, batch_size, partial_rate, partial_type, cluster):
+def prepare_loaders_for_cv_candidate_labels(dataname, full_loader, batch_size, partial_rate, partial_type, cluster, num_groups):
     for i, (data, labels) in enumerate(full_loader):
         # K = torch.max(labels) + 1  # K is number of classes, full_train_loader is full batch
         if cluster==1:
@@ -454,7 +454,7 @@ def prepare_loaders_for_cv_candidate_labels(dataname, full_loader, batch_size, p
         elif cluster==3:
             partialY = generate_cluster_based_candidate_labels3(data, labels, partial_rate)
         elif cluster==4:
-            partialY = generate_instance_based_candidate_labels(data, labels, partial_rate)
+            partialY = generate_instance_based_candidate_labels(data, labels, partial_rate, dataname, num_groups=num_groups)
         else:
             partialY = generate_uniform_cv_candidate_labels(dataname, labels, partial_type)
         # partial_matrix_dataset = gen_index_dataset(data, partialY.float(), partialY.float())
@@ -611,7 +611,7 @@ def generate_cluster_based_candidate_labels3(data, true_labels, partial_rate, cl
     print("Finished Generating Candidate Label Sets!\n")
     return partialY
 
-def generate_instance_based_candidate_labels(data, true_labels, partial_rate):
+def generate_instance_based_candidate_labels(data, true_labels, partial_rate, dataname, num_groups=10):
     if torch.min(true_labels) > 1:
         raise RuntimeError('testError')
     elif torch.min(true_labels) == 1:
@@ -628,22 +628,44 @@ def generate_instance_based_candidate_labels(data, true_labels, partial_rate):
     flattened_data = data.reshape((n, c*dim1*dim2))
     X = flattened_data.numpy()
 
+    # n = 500
+    # true_labels = true_labels[:n]
+    # X=X[:n]
+    
     dist_matrix = torch.zeros(n, K)
     for i in range(K):
         X_k = X[true_labels==i]
-        ds = cdist(X,X_k)
+        ds = edist(X,X_k)
         ds = ds.min(axis=1)
         dist_matrix[:,i] = torch.tensor(ds)
-    prob_matrix = 1 / dist_matrix ** 2
+    prob_matrix = 1 / (dist_matrix+1e-5)
     prob_matrix[torch.arange(n), true_labels] = 0.0
-    prob_matrix /= prob_matrix.sum(dim=1, keepdim=True)
-    distractors = torch.multinomial(prob_matrix, int(partial_rate * K), replacement=False) #  TODO maybe with replacement?
+
+    if dataname == "cifar100":
+        labels = np.arange(K)
+        coarse_labels = cifar100_sparse2coarse(labels, num_groups)
+        different_coarse_label = np.expand_dims(coarse_labels,0) != np.expand_dims(coarse_labels,1)
+        for i in range(n):
+            prob_matrix[i, different_coarse_label[true_labels[i]]] = 0
+
+    # we set the highest probability to partial_rate
+    prob_matrix *= partial_rate / torch.max(prob_matrix, dim=1, keepdim=True).values
+    distractors = torch.distributions.Binomial(1, prob_matrix).sample().long()
+
+    # we sample partial_rate * K distractors
+    # prob_matrix /= prob_matrix.sum(dim=1, keepdim=True)
+    # distractors = torch.multinomial(prob_matrix, int(partial_rate * K), replacement=False) #  TODO maybe with replacement?
 
     # Generate Partial Labels:
     partialY = torch.zeros(n, K)
     partialY[torch.arange(n), true_labels] = 1.0
+
+    
     for i in range(n):
-        partialY[i, distractors[i]] = 1
+        partialY[i, torch.nonzero(distractors[i])] = 1
+
+
+        
     print("Finished Generating Instance based Candidate Label Sets!\n")
     return partialY
 
@@ -683,6 +705,10 @@ def cifar100_sparse2coarse(targets, groups):
             coarser_labels = [1, 1, 0, 1, 0, 1, 4, 3, 2, 4, 0, 2, 2, 3, 2, 3, 3, 0, 4, 4]
         elif groups==4:
             coarser_labels = [0, 0, 1, 2, 1, 2, 2, 0, 3, 1, 1, 3, 3, 0, 3, 0, 3, 1, 2, 2]
+        elif groups==2: # animals vs the rest
+            coarser_labels = [0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1]
+        elif groups==1: # no hierarchy
+            coarser_labels = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         coarser_labels = np.array(coarser_labels)
         return coarser_labels[new_targets]
         
