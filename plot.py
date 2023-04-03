@@ -125,7 +125,7 @@ def exp14():
     series = "lo"
     x_axes = ["num_groups"]
     outdir="plots/cifar100_groups"
-    for prt in ["0.9", "0.8", "0.7", "0.6", "0.5", "0.4", "0.3", "0.2", "0.1"]:        
+    for prt in ["0.9", "0.8", "0.7", "0.6", "0.5", "0.4", "0.3", "0.2", "0.1", "0.0"]:        
         filtermap = {
             "prt":prt,
         }
@@ -136,8 +136,12 @@ def exp14():
     }
     x_axes = ["prt"]
     outdir="plots/cifar100_groups"
-    for x_axis in x_axes:
-        plot(directory, series, x_axis, outdir, metrics, filtermap)
+    for num_groups in ["1", "2", "4", "5", "10", "20"]:        
+        filtermap = {
+            "num_groups":num_groups,
+        }
+        for x_axis in x_axes:
+            plot(directory, series, x_axis, outdir, metrics, filtermap, prefix="groups-{}_".format(num_groups))
     
 
 exp14()

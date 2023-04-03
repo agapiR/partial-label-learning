@@ -665,7 +665,7 @@ def generate_instance_based_candidate_labels(data, true_labels, partial_rate, da
         partialY[i, torch.nonzero(distractors[i])] = 1
 
 
-        
+    print("Avg number of distractors: ", torch.mean(distractors.sum(dim=1).float()))
     print("Finished Generating Instance based Candidate Label Sets!\n")
     return partialY
 
