@@ -7,6 +7,7 @@ from models.model_linear import Linearnet
 from models.model_mlp import Mlp
 from models.model_cnn import Cnn
 from models.model_resnet import Resnet
+from pytorch_cifar100.models.resnet import resnet50, resnet101, resnet34
 from utils.utils_data import generate_real_dataloader, generate_synthetic_hypercube_dataloader
 from utils.utils_data import generate_cv_dataloader
 #from utils.utils_data import prepare_train_loaders_for_uniform_cv_candidate_labels, prepare_train_loaders_for_cluster_based_candidate_labels
@@ -34,7 +35,7 @@ parser.add_argument('-pr', help='partial_type', default="01", type=str)
 parser.add_argument('-mo',
                     help='model name',
                     default='mlp',
-                    choices=['linear', 'mlp', 'cnn', 'resnet', 'densenet', 'lenet'],
+                    choices=['linear', 'mlp', 'cnn', 'resnet', 'densenet', 'lenet', "resnet50", "resnet34", "resnet101"],
                     type=str,
                     required=False)
 parser.add_argument('-lo',
@@ -211,12 +212,15 @@ elif args.mo == 'cnn':
                 dropout_rate=dropout_rate)
 elif args.mo == "resnet":
     model = Resnet(depth=32, n_outputs=K)
+elif args.mo == "resnet50":
+    assert args.ds == "cifar100"
+    model = resnet50()
 
 model = model.to(device)
 print(model)
 
-optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.wd, momentum=0.9)
-# optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.wd)
+# optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.wd, momentum=0.9)
+optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.wd)
 
 train_accuracy = accuracy_check(loader=train_loader, model=model, device=device)
 test_accuracy = accuracy_check(loader=test_loader, model=model, device=device)

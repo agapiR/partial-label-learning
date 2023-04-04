@@ -1,3 +1,6 @@
 [submodule "egtsimplex"]
 	path = egtsimplex
 	url = ../../marvinboe/egtsimplex.git
+[submodule "pytorch-cifar100"]
+	path = pytorch_cifar100
+	url = https://github.com/weiaicunzai/pytorch-cifar100
