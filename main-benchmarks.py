@@ -7,7 +7,7 @@ from models.model_linear import Linearnet
 from models.model_mlp import Mlp
 from models.model_cnn import Cnn
 from models.model_resnet import Resnet
-from pytorch_cifar100.models.resnet import resnet50, resnet101, resnet34
+# from pytorch_cifar100.models.resnet import resnet50, resnet101, resnet34
 from utils.utils_data import generate_real_dataloader, generate_synthetic_hypercube_dataloader
 from utils.utils_data import generate_cv_dataloader
 #from utils.utils_data import prepare_train_loaders_for_uniform_cv_candidate_labels, prepare_train_loaders_for_cluster_based_candidate_labels
