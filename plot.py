@@ -142,6 +142,14 @@ def exp14():
         }
         for x_axis in x_axes:
             plot(directory, series, x_axis, outdir, metrics, filtermap, prefix="groups-{}_".format(num_groups))
-    
 
-exp14()
+def exp16():
+    directory = "out/zs16"
+    series = "lo"
+    x_axes = ["prt"]
+    outdir="plots/cifar10_instance_based"
+    for x_axis in x_axes:
+        plot(directory, series, x_axis, outdir, metrics)
+
+
+exp16()
