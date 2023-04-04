@@ -151,7 +151,7 @@ device = torch.device("cuda:" + args.gpu if torch.cuda.is_available() else "cpu"
 if args.ds in ['birdac', 'lost']:
     (partial_matrix_train_loader, train_loader, eval_loader, test_loader, train_partial_Y, dim, K) = generate_real_dataloader(args.ds, './data/realworld/', args.bs, 42)
 
-elif args.ds in ['mnist', 'kmnist', 'fashion', 'cifar10', 'cifar100']:
+elif args.ds in ['mnist', 'kmnist', 'fashion', 'cifar10', 'cifar100', 'shierarchy32']:
     (partial_matrix_train_loader, train_loader,
      partial_matrix_valid_loader, valid_loader,
      partial_matrix_test_loader, test_loader,
