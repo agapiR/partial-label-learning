@@ -22,6 +22,21 @@ import re
 from utils.gen_index_dataset import gen_index_dataset
 
 
+class CustomDataset(Dataset):
+    def __init__(self, X, y):
+        self.data = y
+        self.X = X
+        self.y = y
+        assert X.shape[0] == y.shape[0]
+
+    def __len__(self):
+        return self.X.shape[0]
+
+    def __getitem__(self, idx):
+        X = self.X[idx]
+        y = self.y[idx]
+        return (X, y)
+
 class RealDataset(Dataset):
     def __init__(self, X, y):
         self.X = X
@@ -642,8 +657,14 @@ def generate_instance_based_candidate_labels(data, true_labels, partial_rate, da
     # find distances to nearest instances from each class d_1...d_k
     # compute normalised probability vector <alpha/d_i>
     # sample partial_rate * K distractors
-    _,c,dim1,dim2 = data.shape
-    flattened_data = data.reshape((n, c*dim1*dim2))
+    if len(data.shape)==2:
+        flattened_data = data
+    elif len(data.shape)==3:
+        _,dim1,dim2 = data.shape
+        flattened_data = data.reshape((n, dim1*dim2))
+    else:
+        _,c,dim1,dim2 = data.shape
+        flattened_data = data.reshape((n, c*dim1*dim2))
     X = flattened_data.numpy()
 
     
@@ -960,7 +981,7 @@ def generate_synthetic_hierarchical_data(seed,
 
     ## Create Splits
     X = np.float32(X)
-    y = np.float32(y)
+    y = np.longlong(y)
 
     print("random_state is {}".format(seed))
     train_X, test_X, train_y, test_y = train_test_split(X,
@@ -983,7 +1004,7 @@ def generate_synthetic_hierarchical_data(seed,
     # valid_X = scaler.transform(valid_X)
     test_X = scaler.transform(test_X)
 
-    ordinary_train_dataset = RealDataset(train_X, train_y)
-    ordinary_test_dataset = RealDataset(test_X, test_y)
+    ordinary_train_dataset = CustomDataset(train_X, train_y)
+    ordinary_test_dataset = CustomDataset(test_X, test_y)
 
     return ordinary_train_dataset, ordinary_test_dataset
