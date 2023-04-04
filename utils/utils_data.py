@@ -620,6 +620,20 @@ def generate_instance_based_candidate_labels(data, true_labels, partial_rate, da
     K = torch.max(true_labels) - torch.min(true_labels) + 1
     n = true_labels.shape[0]
 
+    # n = 500
+    # true_labels = true_labels[:n]
+    # data=data[:n]
+
+
+    # Generate Partial Labels:
+    partialY = torch.zeros(n, K)
+    partialY[torch.arange(n), true_labels] = 1.0
+
+    if partial_rate == 0:
+        print("No distractors")
+        return partialY
+
+
 
     # find distances to nearest instances from each class d_1...d_k
     # compute normalised probability vector <alpha/d_i>
@@ -628,9 +642,6 @@ def generate_instance_based_candidate_labels(data, true_labels, partial_rate, da
     flattened_data = data.reshape((n, c*dim1*dim2))
     X = flattened_data.numpy()
 
-    # n = 500
-    # true_labels = true_labels[:n]
-    # X=X[:n]
     
     dist_matrix = torch.zeros(n, K)
     for i in range(K):
@@ -656,14 +667,10 @@ def generate_instance_based_candidate_labels(data, true_labels, partial_rate, da
     # prob_matrix /= prob_matrix.sum(dim=1, keepdim=True)
     # distractors = torch.multinomial(prob_matrix, int(partial_rate * K), replacement=False) #  TODO maybe with replacement?
 
-    # Generate Partial Labels:
-    partialY = torch.zeros(n, K)
-    partialY[torch.arange(n), true_labels] = 1.0
 
     
     for i in range(n):
         partialY[i, torch.nonzero(distractors[i])] = 1
-
 
     print("Avg number of distractors: ", torch.mean(distractors.sum(dim=1).float()))
     print("Finished Generating Instance based Candidate Label Sets!\n")
