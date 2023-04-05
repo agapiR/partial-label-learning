@@ -2,23 +2,24 @@
 from run import run_all
 
 experiment=21
-gpus=[0,3,4,5,6]
+gpus=[0,1,2,3]
 jobs_per_gpu=3
 outdir = "out/zs{}".format(experiment)
 
 args = {
     "-ds": ['shierarchy32'],
-    "-mo": ['cnn'],
+    "-mo": ['mlp'],
     "-lo": ['prp', 'prp_basic', 'nll'],
     "-lw": ['1'],
-    "-lr": ["0.005"],
+    "-lr": ["0.01"],
     "-wd": ["0.001"],
     "-bs": ["256"],
     "-ep": ["100"],
-    "-seed": ["0"],
-    "-dseed": ["1","2","3","4"],
+    "-seed": ["1","2","3"],
+    "-dseed": ["0"],
     "-cluster":["4"],
-    "-prt": ["0.01", "0.02", "0.03", "0.04", "0.05", "0.06", "0.07", "0.08"],
+    "-prt": ["0.9", "0.7", "0.5", "0.3", "0.2", "0.1", "0.0"],
+    "-num_groups":["1", "2", "4", "8", "16", "32"],
     }
 
 print("Experiment", experiment)

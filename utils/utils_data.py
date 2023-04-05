@@ -363,7 +363,14 @@ def prepare_cv_datasets(dataname, batch_size):
                                      transform=test_transform)
     elif dataname == 'shierarchy32':
         seed = 42
-        ordinary_train_dataset, test_dataset = generate_synthetic_hierarchical_data(seed)
+        levels = 6
+        # ordinary_train_dataset, test_dataset = generate_synthetic_hierarchical_data(seed)
+        ordinary_train_dataset, test_dataset = generate_synthetic_hierarchical_data(seed, 
+                                                num_samples_per_class=200,
+                                                feature_dim=1200,
+                                                num_levels=levels,
+                                                class_sep=5.0
+                                                )
 
     train_loader = torch.utils.data.DataLoader(dataset=ordinary_train_dataset,
                                                batch_size=batch_size,
@@ -977,6 +984,7 @@ def generate_synthetic_hierarchical_data(seed,
 
         X[:, (l*features_dim_per_level):((l+1)*features_dim_per_level)] = Xl
 
+    # TODO: shuffle the features! 
     y = np.array([i for labels in [[c]*num_samples_per_class for c in range(num_classes)] for i in labels])
 
     ## Create Splits

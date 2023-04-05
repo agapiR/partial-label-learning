@@ -189,4 +189,27 @@ def exp20():
     for x_axis in x_axes:
         plot(directory, series, x_axis, outdir, metrics)
 
-exp20()
+def exp21():
+    directory = "out/zs21"
+    series = "lo"
+    x_axes = ["num_groups"]
+    outdir="plots/zs21_shierarchy21"
+    for prt in ["0.9", "0.7", "0.5", "0.3", "0.2", "0.1", "0.0"]:        
+        filtermap = {
+            "prt":prt,
+        }
+        for x_axis in x_axes:
+            plot(directory, series, x_axis, outdir, metrics, filtermap, prefix="prt-{}_".format(prt))
+        
+    filtermap = {
+    }
+    x_axes = ["prt"]
+    outdir="plots/zs21_shierarchy21"
+    for num_groups in ["1", "2", "4", "8", "16", "32"]:        
+        filtermap = {
+            "num_groups":num_groups,
+        }
+        for x_axis in x_axes:
+            plot(directory, series, x_axis, outdir, metrics, filtermap, prefix="groups-{}_".format(num_groups))
+
+exp21()
