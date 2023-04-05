@@ -7,7 +7,7 @@ from models.model_linear import Linearnet
 from models.model_mlp import Mlp
 from models.model_cnn import Cnn
 from models.model_resnet import Resnet
-from pytorch_cifar100.models.resnet import resnet50, resnet101, resnet34
+# from pytorch_cifar100.models.resnet import resnet50, resnet101, resnet34
 from utils.utils_data import generate_real_dataloader, generate_synthetic_hypercube_dataloader
 from utils.utils_data import generate_cv_dataloader
 #from utils.utils_data import prepare_train_loaders_for_uniform_cv_candidate_labels, prepare_train_loaders_for_cluster_based_candidate_labels
@@ -151,7 +151,7 @@ device = torch.device("cuda:" + args.gpu if torch.cuda.is_available() else "cpu"
 if args.ds in ['birdac', 'lost']:
     (partial_matrix_train_loader, train_loader, eval_loader, test_loader, train_partial_Y, dim, K) = generate_real_dataloader(args.ds, './data/realworld/', args.bs, 42)
 
-elif args.ds in ['mnist', 'kmnist', 'fashion', 'cifar10', 'cifar100']:
+elif args.ds in ['mnist', 'kmnist', 'fashion', 'cifar10', 'cifar100', 'shierarchy32']:
     (partial_matrix_train_loader, train_loader,
      partial_matrix_valid_loader, valid_loader,
      partial_matrix_test_loader, test_loader,
