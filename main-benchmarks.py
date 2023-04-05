@@ -219,8 +219,9 @@ elif args.mo == "resnet50":
 model = model.to(device)
 print(model)
 
-# optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.wd, momentum=0.9)
-optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.wd)
+optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.wd, momentum=0.9)
+# optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.wd)
+train_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[int(0.3*args.ep),int(0.6*args.ep), int(0.8*args.ep)], gamma=0.2) #learning rate decay
 
 train_accuracy = accuracy_check(loader=train_loader, model=model, device=device)
 test_accuracy = accuracy_check(loader=test_loader, model=model, device=device)
@@ -252,6 +253,7 @@ best_valid_pos_prob = 0.0
 tolerance = NO_IMPROVEMENT_TOLERANCE
 for epoch in range(args.ep):
     model.train()
+    train_scheduler.step(epoch)
     adjust_learning_rate(optimizer, epoch)
     for i, (images, labels, true_labels,
             index) in enumerate(partial_matrix_train_loader):

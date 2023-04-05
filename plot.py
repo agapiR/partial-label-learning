@@ -190,4 +190,13 @@ def exp19():
     for x_axis in x_axes:
         plot(directory, series, x_axis, outdir, metrics)
 
-exp18()
+def exp20():
+    directory = "out/zs20"
+    series = "lo"
+    x_axes = ["lr"]
+    outdir="plots/zs20_cifar100_resnet50_lr"
+    for x_axis in x_axes:
+        plot(directory, series, x_axis, outdir, metrics)
+
+exp20()
+
