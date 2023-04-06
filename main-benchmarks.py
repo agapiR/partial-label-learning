@@ -3,11 +3,12 @@ import argparse
 import numpy as np
 import torch
 import sys
+import time
 from models.model_linear import Linearnet
 from models.model_mlp import Mlp
 from models.model_cnn import Cnn
 from models.model_resnet import Resnet
-from pytorch_cifar100.models.resnet import resnet50, resnet101, resnet34
+from pytorch_cifar100.models.resnet import resnet18, resnet50, resnet101, resnet34
 from utils.utils_data import generate_real_dataloader, generate_synthetic_hypercube_dataloader
 from utils.utils_data import generate_cv_dataloader
 #from utils.utils_data import prepare_train_loaders_for_uniform_cv_candidate_labels, prepare_train_loaders_for_cluster_based_candidate_labels
@@ -19,7 +20,7 @@ from utils.utils_loss import (rc_loss, cc_loss, lws_loss,
                               bi_prp_loss, bi_prp2_loss, bi_prp_nll_loss, nll_loss, democracy_loss)
 
 # TODO: read as argument
-NO_IMPROVEMENT_TOLERANCE=20
+NO_IMPROVEMENT_TOLERANCE=200
 
 print(sys.argv[1:], file=sys.stderr)
 
@@ -35,7 +36,7 @@ parser.add_argument('-pr', help='partial_type', default="01", type=str)
 parser.add_argument('-mo',
                     help='model name',
                     default='mlp',
-                    choices=['linear', 'mlp', 'cnn', 'resnet', 'densenet', 'lenet', "resnet50", "resnet34", "resnet101"],
+                    choices=['linear', 'mlp', 'cnn', 'resnet', 'densenet', 'lenet', "resnet18", "resnet50", "resnet34", "resnet101"],
                     type=str,
                     required=False)
 parser.add_argument('-lo',
@@ -151,7 +152,7 @@ device = torch.device("cuda:" + args.gpu if torch.cuda.is_available() else "cpu"
 if args.ds in ['birdac', 'lost']:
     (partial_matrix_train_loader, train_loader, eval_loader, test_loader, train_partial_Y, dim, K) = generate_real_dataloader(args.ds, './data/realworld/', args.bs, 42)
 
-elif args.ds in ['mnist', 'kmnist', 'fashion', 'cifar10', 'cifar100']:
+elif args.ds in ['mnist', 'kmnist', 'fashion', 'cifar10', 'cifar100', 'shierarchy32']:
     (partial_matrix_train_loader, train_loader,
      partial_matrix_valid_loader, valid_loader,
      partial_matrix_test_loader, test_loader,
@@ -215,6 +216,9 @@ elif args.mo == "resnet":
 elif args.mo == "resnet50":
     assert args.ds == "cifar100"
     model = resnet50()
+elif args.mo == "resnet18":
+    assert args.ds == "cifar100"
+    model = resnet18()
 
 model = model.to(device)
 print(model)
@@ -252,9 +256,9 @@ train_prob_list = []
 best_valid_pos_prob = 0.0
 tolerance = NO_IMPROVEMENT_TOLERANCE
 for epoch in range(args.ep):
+    T0 = time.time()
     model.train()
-    train_scheduler.step(epoch)
-    adjust_learning_rate(optimizer, epoch)
+    # adjust_learning_rate(optimizer, epoch)
     for i, (images, labels, true_labels,
             index) in enumerate(partial_matrix_train_loader):
         X, Y, index = images.to(device), labels.to(device), index.to(device)
@@ -279,6 +283,7 @@ for epoch in range(args.ep):
         elif args.lo == 'lws':
             confidence = confidence_update_lw(model, confidence, X, Y, index)
         
+    train_scheduler.step(epoch)
     model.eval()
     train_accuracy = accuracy_check(loader=train_loader, model=model, device=device)
     train_pos_prob, train_pos_prob_true = prob_check(loader=partial_matrix_train_loader, model=model, device=device)
@@ -289,8 +294,9 @@ for epoch in range(args.ep):
     
     # train_ratios = ratio_check(loader=partial_matrix_train_loader, model=model, device=device)
 
-    print('Epoch: {}. Tr Acc: {:.6f}. Va Acc: {:.6f}. Va Pos Prob {:.6f}.'.format(
-        epoch + 1, train_accuracy, valid_accuracy, valid_pos_prob))
+    T1 = time.time()
+    print('Epoch: {}. Sec: {}.. Tr Acc: {:.6f}. Va Acc: {:.6f}. Va Pos Prob {:.6f}.'.format(
+        epoch + 1, T1-T0, train_accuracy, valid_accuracy, valid_pos_prob))
     sys.stdout.flush()
     with open(save_path, "a") as f:
         f.writelines("{},{:.6f},{:.6f},{:.6f}\n".format(epoch + 1, train_accuracy,

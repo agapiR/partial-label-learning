@@ -116,7 +116,7 @@ def exp14():
     directory = "out/zs14"
     series = "lo"
     x_axes = ["num_groups"]
-    outdir="plots/cifar100_groups"
+    outdir="plots/zs14_cifar100_groups"
     for prt in ["0.9", "0.8", "0.7", "0.6", "0.5", "0.4", "0.3", "0.2", "0.1", "0.0"]:        
         filtermap = {
             "prt":prt,
@@ -124,10 +124,7 @@ def exp14():
         for x_axis in x_axes:
             plot(directory, series, x_axis, outdir, metrics, filtermap, prefix="prt-{}_".format(prt))
         
-    filtermap = {
-    }
     x_axes = ["prt"]
-    outdir="plots/cifar100_groups"
     for num_groups in ["1", "2", "4", "5", "10", "20"]:        
         filtermap = {
             "num_groups":num_groups,
@@ -173,6 +170,18 @@ def exp17():
         for x_axis in x_axes:
             plot(directory, series, x_axis, outdir, metrics, filtermap, prefix="groups-{}_".format(num_groups))
 
+def exp18():
+    directory = "out/zs18"
+    series = "lo"
+    x_axes = ["num_groups"]
+    outdir="plots/zs18_cifar100_adam"
+    for prt in ["0.9", "0.8", "0.7", "0.6", "0.5", "0.4", "0.3", "0.2", "0.1", "0.0"]:        
+        filtermap = {
+            "prt":prt,
+        }
+        for x_axis in x_axes:
+            plot(directory, series, x_axis, outdir, metrics, filtermap, prefix="prt-{}_".format(prt))
+
 def exp19():
     directory = "out/zs19"
     series = "lo"
@@ -193,4 +202,42 @@ def exp20():
     for x_axis in x_axes:
         plot(directory, series, x_axis, outdir, metrics)
 
-exp19()
+def exp21():
+    directory = "out/zs21"
+    series = "lo"
+    x_axes = ["num_groups"]
+    outdir="plots/zs21_shierarchy32"
+    for prt in ["0.9", "0.7", "0.5", "0.3", "0.2", "0.1", "0.0"]:        
+        filtermap = {
+            "prt":prt,
+        }
+        for x_axis in x_axes:
+            plot(directory, series, x_axis, outdir, metrics, filtermap, prefix="prt-{}_".format(prt))
+        
+    filtermap = {
+    }
+    x_axes = ["prt"]
+    outdir="plots/zs21_shierarchy32"
+    for num_groups in ["1", "2", "4", "8", "16", "32"]:        
+        filtermap = {
+            "num_groups":num_groups,
+        }
+        for x_axis in x_axes:
+            plot(directory, series, x_axis, outdir, metrics, filtermap, prefix="groups-{}_".format(num_groups))
+
+
+def exp22():
+    directory = "out/zs22"
+    series = "lo"
+    x_axes = ["num_groups"]
+    outdir="plots/zs22_shierarchy32"
+    prt="0.2"    
+    filtermap = {
+        "prt":prt,
+    }
+    for x_axis in x_axes:
+        plot(directory, series, x_axis, outdir, metrics, filtermap, prefix="prt-{}_".format(prt))
+
+exp22()
+
+

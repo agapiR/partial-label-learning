@@ -22,6 +22,21 @@ import re
 from utils.gen_index_dataset import gen_index_dataset
 
 
+class CustomDataset(Dataset):
+    def __init__(self, X, y):
+        self.data = y
+        self.X = X
+        self.y = y
+        assert X.shape[0] == y.shape[0]
+
+    def __len__(self):
+        return self.X.shape[0]
+
+    def __getitem__(self, idx):
+        X = self.X[idx]
+        y = self.y[idx]
+        return (X, y)
+
 class RealDataset(Dataset):
     def __init__(self, X, y):
         self.X = X
@@ -346,7 +361,18 @@ def prepare_cv_datasets(dataname, batch_size):
         test_dataset = dsets.CIFAR100(root='~/datasets/cifar100',
                                      train=False,
                                      transform=test_transform)
-
+    elif dataname == 'shierarchy32':
+        seed = 12
+        levels = 6
+        d = 120
+        n = 100
+        # ordinary_train_dataset, test_dataset = generate_synthetic_hierarchical_data(seed)
+        ordinary_train_dataset, test_dataset = generate_synthetic_hierarchical_data(seed, 
+                                                num_samples_per_class=n,
+                                                feature_dim=d,
+                                                num_levels=levels,
+                                                class_sep=1.5
+                                                )
 
     train_loader = torch.utils.data.DataLoader(dataset=ordinary_train_dataset,
                                                batch_size=batch_size,
@@ -370,6 +396,8 @@ def prepare_cv_datasets(dataname, batch_size):
     
     if dataname == 'cifar100':
         num_classes = 100
+    elif dataname == 'shierarchy32':
+        num_classes = 32
     else:
         num_classes = 10
         
@@ -638,8 +666,14 @@ def generate_instance_based_candidate_labels(data, true_labels, partial_rate, da
     # find distances to nearest instances from each class d_1...d_k
     # compute normalised probability vector <alpha/d_i>
     # sample partial_rate * K distractors
-    _,c,dim1,dim2 = data.shape
-    flattened_data = data.reshape((n, c*dim1*dim2))
+    if len(data.shape)==2:
+        flattened_data = data
+    elif len(data.shape)==3:
+        _,dim1,dim2 = data.shape
+        flattened_data = data.reshape((n, dim1*dim2))
+    else:
+        _,c,dim1,dim2 = data.shape
+        flattened_data = data.reshape((n, c*dim1*dim2))
     X = flattened_data.numpy()
 
     
@@ -655,6 +689,12 @@ def generate_instance_based_candidate_labels(data, true_labels, partial_rate, da
     if dataname == "cifar100":
         labels = np.arange(K)
         coarse_labels = cifar100_sparse2coarse(labels, num_groups)
+        different_coarse_label = np.expand_dims(coarse_labels,0) != np.expand_dims(coarse_labels,1)
+        for i in range(n):
+            prob_matrix[i, different_coarse_label[true_labels[i]]] = 0
+    elif dataname == "shierarchy32":
+        labels = np.arange(K)
+        coarse_labels = shierarchy32_sparse2coarse(labels, num_groups)
         different_coarse_label = np.expand_dims(coarse_labels,0) != np.expand_dims(coarse_labels,1)
         for i in range(n):
             prob_matrix[i, different_coarse_label[true_labels[i]]] = 0
@@ -688,6 +728,27 @@ def cifar100_sparse2coarse(targets, groups):
         trainset = torchvision.datasets.CIFAR100(path)
         trainset.targets = sparse2coarse(trainset.targets)
     """
+    # 0: aquatic mammals
+    # 1: fish	
+    # 2: flowers
+    # 3: food containers
+    # 4: fruit and vegetables
+    # 5: household electrical devices
+    # 6: household furniture	
+    # 7: insects
+    # 8: large carnivores
+    # 9: large man-made outdoor things
+    # 10:large natural outdoor scenes
+    # 11:large omnivores and herbivores	
+    # 12:medium-sized mammals
+    # 13:non-insect invertebrates
+    # 14:people
+    # 15:reptiles	
+    # 16:small mammals	
+    # 17:trees	
+    # 18:vehicles 1
+    # 19:vehicles 2
+
     # copied from https://github.com/ryanchankh/cifar100coarse/blob/master/sparse2coarse.py
     coarse_labels = np.array([ 4,  1, 14,  8,  0,  6,  7,  7, 18,  3,  
                                3, 14,  9, 18,  7, 11,  3,  9,  7, 11,
@@ -718,27 +779,25 @@ def cifar100_sparse2coarse(targets, groups):
             coarser_labels = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         coarser_labels = np.array(coarser_labels)
         return coarser_labels[new_targets]
+
+
+def shierarchy32_sparse2coarse(targets, groups):
+
+    # "groups" must belong in the list of valid groups, given the hierarchy structure.
+    valid_groups = [2, 4, 6, 8, 16, 32]
+
+    def closest_element(num, lst):
+        return min(lst, key=lambda x: abs(x - num))
+
+    groups = closest_element(groups, valid_groups)
+    assert groups in valid_groups
+
+    C = 32
+    num_classes_per_group = C // groups
+    coarse_labels = np.array([i for labels in [[c]*num_classes_per_group for c in range(groups)] for i in labels])
+
+    return coarse_labels[targets]
         
-# 0: aquatic mammals
-# 1: fish	
-# 2: flowers
-# 3: food containers
-# 4: fruit and vegetables
-# 5: household electrical devices
-# 6: household furniture	
-# 7: insects
-# 8: large carnivores
-# 9: large man-made outdoor things
-# 10:large natural outdoor scenes
-# 11:large omnivores and herbivores	
-# 12:medium-sized mammals
-# 13:non-insect invertebrates
-# 14:people
-# 15:reptiles	
-# 16:small mammals	
-# 17:trees	
-# 18:vehicles 1
-# 19:vehicles 2
 
 ## Synthetic Hypercube Dataset PLL generation
 def generate_synthetic_hypercube_dataloader(partial_rate, batch_size, seed, num_classes=5,
@@ -887,3 +946,89 @@ def generate_synthetic_hypercube_data(partial_rate, seed,
     test_X = scaler.transform(test_X)
 
     return train_X, valid_X, test_X, train_y, valid_y, test_y, train_partial_y, valid_partial_y, test_partial_y
+
+
+
+
+## Synthetic Hierarchical Dataset PLL generation
+
+
+def generate_synthetic_hierarchical_data(seed, 
+                                        num_samples_per_class=100,
+                                        feature_dim=120,
+                                        num_levels=6,
+                                        class_sep=1.5,
+                                        use_cache=False
+                                        ):
+
+    num_classes = 2**(num_levels-1)
+    num_samples = num_samples_per_class * num_classes
+    cachepath = "cache/shierarchy_classes-{}_levels-{}_samples-{}_features-{}_sep-{}_seed-{}.npz".format(num_classes, num_levels, num_samples, feature_dim, class_sep, seed)
+
+    if use_cache and os.path.isfile(cachepath):
+        print("Loading dataset from cache", cachepath)
+        npzfile = np.load(cachepath)
+        X = npzfile['arr_0']
+        y = npzfile['arr_1']
+    else:        
+        ## Generate Samples
+        features_dim_per_level = feature_dim//num_levels
+        X = np.empty((num_samples, features_dim_per_level*num_levels))
+        for l in range(num_levels):
+            num_classes_per_level = 2**l
+            # Xl shape: (num_samples * features_dim_per_level)
+            Xl, _, _, _ = make_classification(n_samples=num_samples,
+                                            n_features=features_dim_per_level, 
+                                            n_informative=features_dim_per_level, 
+                                            n_redundant=0,
+                                            n_repeated=0,
+                                            n_classes=num_classes_per_level,
+                                            n_clusters_per_class=1,
+                                            flip_y=0.0,
+                                            class_sep=class_sep,
+                                            hypercube=True,
+                                            shift=0.0,
+                                            scale=1.0,
+                                            shuffle=False,
+                                            random_state=seed,
+                                            return_centroids=True)
+
+            X[:, (l*features_dim_per_level):((l+1)*features_dim_per_level)] = Xl
+
+        # TODO: shuffle the features! 
+        y = np.array([i for labels in [[c]*num_samples_per_class for c in range(num_classes)] for i in labels])
+
+        ## Save Cache
+        os.makedirs(os.path.dirname(cachepath), exist_ok=True)
+        np.savez(cachepath, X, y)
+
+
+    ## Create Splits
+    X = np.float32(X)
+    y = np.longlong(y)
+
+    print("random_state is {}".format(seed))
+    train_X, test_X, train_y, test_y = train_test_split(X,
+                                                        y,
+                                                        train_size=0.8,
+                                                        test_size=0.2,
+                                                        stratify=y,
+                                                        random_state=seed)
+    # train_X, valid_X, train_y, valid_y = train_test_split(train_X,
+    #                                                     train_y,
+    #                                                     train_size=7 / 8,
+    #                                                     test_size=1 / 8,
+    #                                                     stratify=train_y,
+    #                                                     random_state=seed)
+
+    
+    ## Create Datasets
+    scaler = StandardScaler()
+    train_X = scaler.fit_transform(train_X)
+    # valid_X = scaler.transform(valid_X)
+    test_X = scaler.transform(test_X)
+
+    ordinary_train_dataset = CustomDataset(train_X, train_y)
+    ordinary_test_dataset = CustomDataset(test_X, test_y)
+
+    return ordinary_train_dataset, ordinary_test_dataset
