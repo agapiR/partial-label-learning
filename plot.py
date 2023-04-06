@@ -148,7 +148,7 @@ def exp16():
     directory = "out/zs16"
     series = "lo"
     x_axes = ["prt"]
-    outdir="plots/cifar10_instance_based"
+    outdir="plots/zs16_cifar10"
     for x_axis in x_axes:
         plot(directory, series, x_axis, outdir, metrics)
 
@@ -177,9 +177,13 @@ def exp19():
     directory = "out/zs19"
     series = "lo"
     x_axes = ["num_groups"]
-    outdir="plots/zs19_cifar100_resnet50"
-    for x_axis in x_axes:
-        plot(directory, series, x_axis, outdir, metrics)
+    outdir="plots/zs19_cifar100_resnet18"
+    for prt in ["0.0", "0.05", "0.1", "0.3", "0.6"]:        
+        filtermap = {
+            "prt":prt,
+        }
+        for x_axis in x_axes:
+            plot(directory, series, x_axis, outdir, metrics, filtermap, prefix="prt-{}_".format(prt))
 
 def exp20():
     directory = "out/zs20"
@@ -189,4 +193,4 @@ def exp20():
     for x_axis in x_axes:
         plot(directory, series, x_axis, outdir, metrics)
 
-exp20()
+exp19()
