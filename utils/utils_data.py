@@ -362,14 +362,16 @@ def prepare_cv_datasets(dataname, batch_size):
                                      train=False,
                                      transform=test_transform)
     elif dataname == 'shierarchy32':
-        seed = 42
+        seed = 12
         levels = 6
+        d = 120
+        n = 100
         # ordinary_train_dataset, test_dataset = generate_synthetic_hierarchical_data(seed)
         ordinary_train_dataset, test_dataset = generate_synthetic_hierarchical_data(seed, 
-                                                num_samples_per_class=200,
-                                                feature_dim=1200,
+                                                num_samples_per_class=n,
+                                                feature_dim=d,
                                                 num_levels=levels,
-                                                class_sep=5.0
+                                                class_sep=1.5
                                                 )
 
     train_loader = torch.utils.data.DataLoader(dataset=ordinary_train_dataset,
@@ -955,37 +957,51 @@ def generate_synthetic_hierarchical_data(seed,
                                         num_samples_per_class=100,
                                         feature_dim=120,
                                         num_levels=6,
-                                        class_sep=1.5
+                                        class_sep=1.5,
+                                        use_cache=False
                                         ):
 
-    ## Generate Samples
     num_classes = 2**(num_levels-1)
     num_samples = num_samples_per_class * num_classes
-    features_dim_per_level = feature_dim//num_levels
-    X = np.empty((num_samples, features_dim_per_level*num_levels))
-    for l in range(num_levels):
-        num_classes_per_level = 2**l
-        # Xl shape: (num_samples * features_dim_per_level)
-        Xl, _, _, _ = make_classification(n_samples=num_samples,
-                                        n_features=features_dim_per_level, 
-                                        n_informative=features_dim_per_level, 
-                                        n_redundant=0,
-                                        n_repeated=0,
-                                        n_classes=num_classes_per_level,
-                                        n_clusters_per_class=1,
-                                        flip_y=0.0,
-                                        class_sep=class_sep,
-                                        hypercube=True,
-                                        shift=0.0,
-                                        scale=1.0,
-                                        shuffle=True,
-                                        random_state=seed,
-                                        return_centroids=True)
+    cachepath = "cache/shierarchy_classes-{}_levels-{}_samples-{}_features-{}_sep-{}_seed-{}.npz".format(num_classes, num_levels, num_samples, feature_dim, class_sep, seed)
 
-        X[:, (l*features_dim_per_level):((l+1)*features_dim_per_level)] = Xl
+    if use_cache and os.path.isfile(cachepath):
+        print("Loading dataset from cache", cachepath)
+        npzfile = np.load(cachepath)
+        X = npzfile['arr_0']
+        y = npzfile['arr_1']
+    else:        
+        ## Generate Samples
+        features_dim_per_level = feature_dim//num_levels
+        X = np.empty((num_samples, features_dim_per_level*num_levels))
+        for l in range(num_levels):
+            num_classes_per_level = 2**l
+            # Xl shape: (num_samples * features_dim_per_level)
+            Xl, _, _, _ = make_classification(n_samples=num_samples,
+                                            n_features=features_dim_per_level, 
+                                            n_informative=features_dim_per_level, 
+                                            n_redundant=0,
+                                            n_repeated=0,
+                                            n_classes=num_classes_per_level,
+                                            n_clusters_per_class=1,
+                                            flip_y=0.0,
+                                            class_sep=class_sep,
+                                            hypercube=True,
+                                            shift=0.0,
+                                            scale=1.0,
+                                            shuffle=False,
+                                            random_state=seed,
+                                            return_centroids=True)
 
-    # TODO: shuffle the features! 
-    y = np.array([i for labels in [[c]*num_samples_per_class for c in range(num_classes)] for i in labels])
+            X[:, (l*features_dim_per_level):((l+1)*features_dim_per_level)] = Xl
+
+        # TODO: shuffle the features! 
+        y = np.array([i for labels in [[c]*num_samples_per_class for c in range(num_classes)] for i in labels])
+
+        ## Save Cache
+        os.makedirs(os.path.dirname(cachepath), exist_ok=True)
+        np.savez(cachepath, X, y)
+
 
     ## Create Splits
     X = np.float32(X)
