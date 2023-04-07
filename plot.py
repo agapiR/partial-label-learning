@@ -238,6 +238,29 @@ def exp22():
     for x_axis in x_axes:
         plot(directory, series, x_axis, outdir, metrics, filtermap, prefix="prt-{}_".format(prt))
 
-exp22()
+def exp23():
+    directory = "out/zs23"
+    series = "lo"
+    x_axes = ["num_groups"]
+    outdir="plots/zs23_cifar100"
+    for prt in ["0.9", "0.6", "0.3", "0.0"]:        
+        filtermap = {
+            "prt":prt,
+        }
+        for x_axis in x_axes:
+            plot(directory, series, x_axis, outdir, metrics, filtermap, prefix="prt-{}_".format(prt))
+        
+    filtermap = {
+    }
+    x_axes = ["prt"]
+    outdir="plots/zs23_cifar100"
+    for num_groups in ["1", "2", "4", "5", "10", "20"]:        
+        filtermap = {
+            "num_groups":num_groups,
+        }
+        for x_axis in x_axes:
+            plot(directory, series, x_axis, outdir, metrics, filtermap, prefix="groups-{}_".format(num_groups))
+        
+exp23()
 
 
