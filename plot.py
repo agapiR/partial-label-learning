@@ -43,15 +43,16 @@ def pr_map(pr):
 
 color_map = {
     "prp": "red",
-    "prp_basic": "c",
+    "prp_basic": "coral",
+    "bi_prp":"lightsalmon",
+    "bi_prp2":"lightsalmon",
     "nll": "b",
     "cc":"b",
     "lws": "g",
-    "democracy":"c",
-    "bi_prp":"y",
-    "bi_prp2":"y",
+    "democracy":"cyan",
     "rc":"k",
-    "bi_prp_nll":"m"
+    "bi_prp_nll":"m",
+    "ll":"lime",
     }
 
 def plot(directory, series, x_axis, outdir, metrics, filtermap={}, prefix=""):
@@ -307,6 +308,6 @@ def exp24():
             plot(directory, series, x_axis, outdir, metrics, filtermap, prefix="groups-{}_".format(num_groups))
 
             
-exp24()
+exp23()
 
 
