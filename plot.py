@@ -3,6 +3,7 @@ import os
 import matplotlib.pyplot as plt
 from statistics import median
 import math
+import re
 
 metrics=["Test Prob", "Test Prob PLL", "Test Accuracy", "Train Prob", "Train Prob PLL", "Train Accuracy"]
 
@@ -25,7 +26,20 @@ is_float = {
     "csep": True,
     "lr": True,
     "num_groups": True,
+    "pr": False,
 }
+
+def pr_map(pr):
+    huniform_match = re.match("h([0-9]*)uniform_(.*)", pr)
+    uniform_match = re.match("uniform_(.*)", pr)
+
+    if huniform_match:
+        prt = float(huniform_match.groups()[1])
+        num_groups = float(huniform_match.groups()[0])
+        return prt, num_groups
+
+    # TODO otherp pr values
+
 
 color_map = {
     "prp": "red",
@@ -52,10 +66,21 @@ def plot(directory, series, x_axis, outdir, metrics, filtermap={}, prefix=""):
             argdict = {}
             skipfile = False
             for i in range(0, len(args), 2):
-                argdict[args[i]] = args[i+1].rstrip('_')
-                if args[i] in filtermap and argdict[args[i]] != filtermap[args[i]]:
-                    # print(args[i], argdict[args[i]], filtermap[args[i]])
+                key = args[i]
+                value = args[i+1].rstrip('_')
+                
+                argdict[key] = value
+                if key in filtermap and argdict[key] != filtermap[key]:
                     skipfile=True
+                if key == "pr":
+                    prt, num_groups = pr_map(value)
+                    argdict["prt"] = prt
+                    argdict["num_groups"] = num_groups
+                    if "prt" in filtermap and prt != float(filtermap["prt"]):
+                        skipfile=True
+                    if "num_groups" in filtermap and num_groups != float(filtermap["num_groups"]):
+                        skipfile=True
+                    
             if skipfile:
                 continue
 
@@ -253,14 +278,35 @@ def exp23():
     filtermap = {
     }
     x_axes = ["prt"]
-    outdir="plots/zs23_cifar100"
     for num_groups in ["1", "2", "4", "5", "10", "20"]:        
         filtermap = {
             "num_groups":num_groups,
         }
         for x_axis in x_axes:
             plot(directory, series, x_axis, outdir, metrics, filtermap, prefix="groups-{}_".format(num_groups))
+
+def exp24():
+    directory = "out/zs24"
+    series = "lo"
+    x_axes = ["num_groups"]
+    outdir="plots/zs24_cifar100_uniform"
+
+    for prt in ["0.2", "0.1", "0.05"]:        
+        filtermap = {
+            "prt":prt,
+        }
+        for x_axis in x_axes:
+            plot(directory, series, x_axis, outdir, metrics, filtermap, prefix="prt-{}_".format(prt))
         
-exp23()
+    x_axes = ["prt"]
+    for num_groups in ["1", "2", "4", "5", "10", "20", "50"]:        
+        filtermap = {
+            "num_groups":num_groups,
+        }
+        for x_axis in x_axes:
+            plot(directory, series, x_axis, outdir, metrics, filtermap, prefix="groups-{}_".format(num_groups))
+
+            
+exp24()
 
 
