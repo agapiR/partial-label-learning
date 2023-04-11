@@ -258,7 +258,7 @@ def generate_uniform_cv_candidate_labels(dataname, train_labels, partial_type):
                         
                     coarse_labels = cifar100_sparse2coarse(labels, num_groups)
                     different_coarse_label = np.expand_dims(coarse_labels,0) != np.expand_dims(coarse_labels,1)
-                    transition_matrix[different_coarse_label] = 0.0                
+                    transition_matrix[different_coarse_label] = 0.0
                     
                 
     transition_matrix = np.array(transition_matrix)
@@ -803,9 +803,11 @@ def shierarchy32_sparse2coarse(targets, groups):
 def generate_synthetic_hypercube_dataloader(partial_rate, batch_size, seed, num_classes=5,
                                             num_samples=1000,
                                             feature_dim=5,
-                                            class_sep=0.1, use_cache=True):
+                                            class_sep=0.1,
+                                            noise_model="distancebased",
+                                            use_cache=True):
     
-    cachepath = "cache/pr-{}_classes-{}_samples-{}_features-{}_sep-{}_seed-{}.npz".format(partial_rate, num_classes, num_samples, feature_dim, class_sep, seed)
+    cachepath = "cache/pr-{}_classes-{}_samples-{}_features-{}_sep-{}_noise-{}_seed-{}.npz".format(partial_rate, num_classes, num_samples, feature_dim, class_sep, noise_model, seed)
 
     if use_cache and os.path.isfile(cachepath):
         print("Loading dataset from cache", cachepath)
@@ -820,7 +822,7 @@ def generate_synthetic_hypercube_dataloader(partial_rate, batch_size, seed, num_
         valid_partial_y = npzfile['arr_7']
         test_partial_y = npzfile['arr_8']
     else:        
-        train_X, valid_X, test_X, train_y, valid_y, test_y, train_partial_y, valid_partial_y, test_partial_y = generate_synthetic_hypercube_data(partial_rate, seed, num_classes, num_samples, feature_dim, class_sep)
+        train_X, valid_X, test_X, train_y, valid_y, test_y, train_partial_y, valid_partial_y, test_partial_y = generate_synthetic_hypercube_data(partial_rate, seed, num_classes, num_samples, feature_dim, class_sep, noise_model)
         os.makedirs(os.path.dirname(cachepath), exist_ok=True)
         np.savez(cachepath, train_X, valid_X, test_X, train_y, valid_y, test_y, train_partial_y, valid_partial_y, test_partial_y)
 
@@ -883,7 +885,8 @@ def generate_synthetic_hypercube_data(partial_rate, seed,
                                       num_classes=5,
                                       num_samples=1000,
                                       feature_dim=5,
-                                      class_sep=0.1):
+                                      class_sep=0.1,
+                                      noise_model="distancebased"):
 
     ## Generate Samples
     X, y, centroids, y_centroids = make_classification( n_samples=num_samples,
@@ -909,15 +912,28 @@ def generate_synthetic_hypercube_data(partial_rate, seed,
     ## Generate Partial Labels
     partial_y = np.zeros((num_samples, num_classes))
     partial_y[np.arange(y.size), y] = 1
-    num_distractors = int(partial_rate*num_classes)
-    sample_centroid_distances = cdist(X, Y=centroids)
-    for x in range(num_samples):
-        candidate_distractors_sorted = list(np.argsort(sample_centroid_distances[x]))
-        distractors = candidate_distractors_sorted[:num_distractors]
-        # if the true label is selected among the distractors, replace with additional distractor
-        if y[x] in distractors:
-            distractors.append(candidate_distractors_sorted[num_distractors-1])
-        partial_y[x, distractors] = 1
+    if noise_model == "distancebased":
+        num_distractors = int(partial_rate*num_classes)
+        sample_centroid_distances = cdist(X, Y=centroids)
+        for x in range(num_samples):
+            candidate_distractors_sorted = list(np.argsort(sample_centroid_distances[x]))
+            distractors = candidate_distractors_sorted[:num_distractors]
+            # if the true label is selected among the distractors, replace with additional distractor
+            if y[x] in distractors:
+                distractors.append(candidate_distractors_sorted[num_distractors-1])
+            partial_y[x, distractors] = 1
+    elif noise_model == "distractionbased":
+        # partial_rate specifies the number of times a distractor occurrs in some label for each class
+        for class_curr in range(num_classes):
+            indices = np.where(y==class_curr)[0]
+            y_curr = y[indices]
+            X_curr = X[indices]
+            distractor_count = int(partial_rate * len(indices))
+            for class_distractor in range(num_classes):
+                if class_distractor== class_curr:
+                    continue
+                distractors = np.random.choice(indices, distractor_count, replace=False)
+                partial_y[distractors, class_distractor] = 1
     
     ## Create Splits
     X = np.float32(X)
@@ -946,8 +962,6 @@ def generate_synthetic_hypercube_data(partial_rate, seed,
     test_X = scaler.transform(test_X)
 
     return train_X, valid_X, test_X, train_y, valid_y, test_y, train_partial_y, valid_partial_y, test_partial_y
-
-
 
 
 ## Synthetic Hierarchical Dataset PLL generation

@@ -110,6 +110,7 @@ parser.add_argument('-ns', help='number of samples.', default=1000, type=int, re
 parser.add_argument('-nf', help='number of features.', default=5, type=int, required=False)                  
 parser.add_argument('-csep', help='class separation.', default=0.1, type=float, required=False)        
 parser.add_argument('-dseed', help='Random seed for data generation.', default=42, type=int, required=False)
+parser.add_argument('-noise_model', help='Noise model', type=str, default="distancebased", choices=['distancebased', 'distractionbased'], required=False)
 args = parser.parse_args()
 
 ## Output directory
@@ -119,7 +120,7 @@ if not os.path.exists(save_dir):
 
 ## Dataset name
 if args.ds.startswith('synthetic'):
-    dname = f'synthetic_{args.ns}_{args.nc}_{args.nf}_{args.prt}_{args.csep}_{args.dseed}'
+    dname = f'synthetic_{args.ns}_{args.nc}_{args.nf}_{args.prt}_{args.csep}_{args.noise_model}_{args.dseed}'
 else:
     dname = args.ds
 
@@ -165,7 +166,7 @@ elif args.ds.startswith('synthetic'):
      partial_matrix_valid_loader, valid_loader,
      partial_matrix_test_loader, test_loader,
      train_partial_Y, valid_partial_Y, test_partial_Y,
-     dim, K) = generate_synthetic_hypercube_dataloader(args.prt, args.bs, args.dseed, num_classes=args.nc, num_samples=args.ns, feature_dim=args.nf, class_sep=args.csep)
+     dim, K) = generate_synthetic_hypercube_dataloader(args.prt, args.bs, args.dseed, num_classes=args.nc, num_samples=args.ns, feature_dim=args.nf, class_sep=args.csep, noise_model=args.noise_model)
     train_givenY = train_partial_Y
     train_givenY = torch.tensor(train_givenY)
 
@@ -283,7 +284,7 @@ for epoch in range(args.ep):
         elif args.lo == 'lws':
             confidence = confidence_update_lw(model, confidence, X, Y, index)
         
-    train_scheduler.step(epoch)
+    train_scheduler.step()
     model.eval()
     train_accuracy = accuracy_check(loader=train_loader, model=model, device=device)
     train_pos_prob, train_pos_prob_true = prob_check(loader=partial_matrix_train_loader, model=model, device=device)
