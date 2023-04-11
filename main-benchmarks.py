@@ -20,7 +20,7 @@ from utils.utils_loss import (rc_loss, cc_loss, lws_loss,
                               bi_prp_loss, bi_prp2_loss, bi_prp_nll_loss, nll_loss, democracy_loss)
 
 # TODO: read as argument
-NO_IMPROVEMENT_TOLERANCE=200
+NO_IMPROVEMENT_TOLERANCE=20
 
 print(sys.argv[1:], file=sys.stderr)
 
@@ -296,8 +296,8 @@ for epoch in range(args.ep):
     # train_ratios = ratio_check(loader=partial_matrix_train_loader, model=model, device=device)
 
     T1 = time.time()
-    print('Epoch: {}. Sec: {}.. Tr Acc: {:.6f}. Va Acc: {:.6f}. Va Pos Prob {:.6f}.'.format(
-        epoch + 1, T1-T0, train_accuracy, valid_accuracy, valid_pos_prob))
+    print('Epoch: {}. Sec: {}. Tr Acc: {:.6f}. Tr Pos Prob {:.6f}. Va Acc: {:.6f}. Va Pos Prob {:.6f}.'.format(
+        epoch + 1, T1-T0, train_accuracy, train_pos_prob, valid_accuracy, valid_pos_prob))
     sys.stdout.flush()
     with open(save_path, "a") as f:
         f.writelines("{},{:.6f},{:.6f},{:.6f}\n".format(epoch + 1, train_accuracy,
@@ -323,6 +323,7 @@ for epoch in range(args.ep):
         break
 
 avg_test_acc = np.mean(test_acc_list[-10:])
+best_test_acc = np.max(test_acc_list)
 avg_train_acc = np.mean(train_acc_list[-10:])
 avg_test_prob = np.mean(test_prob_list[-10:])
 avg_test_prob_pll = np.mean(test_prob_pll_list[-10:])
@@ -330,6 +331,7 @@ avg_train_prob = np.mean(train_prob_list[-10:])
 avg_train_prob_pll = np.mean(train_prob_pll_list[-10:])
 
 print("Learning Rate:", args.lr, "Weight Decay:", args.wd)
+print("Best Test Accuracy: ", best_test_acc)
 print("Average Test Accuracy over Last 10 Epochs:", avg_test_acc)
 print("Average Test Probability over Last 10 Epochs:", avg_test_prob)
 print("Average Test PLL Probability over Last 10 Epochs:", avg_test_prob_pll)

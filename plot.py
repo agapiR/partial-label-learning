@@ -2,18 +2,20 @@ import re
 import os
 import matplotlib.pyplot as plt
 from statistics import median
+import numpy as np
 import math
 import re
 
 metrics=["Test Prob", "Test Prob PLL", "Test Accuracy", "Train Prob", "Train Prob PLL", "Train Accuracy"]
 
 metric_map={
-    "Test Accuracy": "Average Test Accuracy over Last 10 Epochs: (\d+\.\d*)",
+    "Test Accuracy old": "Average Test Accuracy over Last 10 Epochs: (\d+\.\d*)",
     "Train Accuracy": "Average Training Accuracy over Last 10 Epochs: (\d+\.\d*)",
     "Test Prob": "Average Test Probability over Last 10 Epochs: (\d+\.\d*)",
     "Test Prob PLL": "Average Test PLL Probability over Last 10 Epochs: (\d+\.\d*)",
     "Train Prob": "Average Train Probability over Last 10 Epochs: (\d+\.\d*)",
     "Train Prob PLL": "Average Train PLL Probability over Last 10 Epochs: (\d+\.\d*)",
+    "Test Accuracy": "Best Test Accuracy:  (\d+\.\d*)",
 }
 
 is_float = {
@@ -27,6 +29,8 @@ is_float = {
     "lr": True,
     "num_groups": True,
     "pr": False,
+    "seed": True,
+    "dseed": True,
 }
 
 def pr_map(pr):
@@ -119,6 +123,8 @@ def plot(directory, series, x_axis, outdir, metrics, filtermap={}, prefix=""):
             ys  = [x for _, x in sorted_pairs]
 
             print("   {} {}\n          -> {}".format(s, xs, ys))
+            ys_mean = [np.mean(y) for y in ys]
+            ys_errors = [np.array(y).std() for y in ys]
             ys_max = [max(y, default=0.0) for y in ys]
             ys_med = [round(median(y),2) if len(y) > 0 else 0.0 for y in ys]
         
@@ -126,6 +132,7 @@ def plot(directory, series, x_axis, outdir, metrics, filtermap={}, prefix=""):
             
             axs[i%3, i//3].plot(xs, ys_med, color=color, label=s+"-median", marker='o')
             axs[i%3, i//3].plot(xs, ys_max, color=color, label=s+"-max", marker='o', linestyle='dashed')
+            # axs[i%3, i//3].errorbar(xs, ys_mean, yerr=ys_errors, color=color, elinewidth=3, label=s, marker='o')
             axs[i%3, i//3].set_title(m)
             axs[i%3, i//3].title.set_fontsize(48)
             axs[i%3, i//3].xaxis.label.set_fontsize(28)
@@ -307,7 +314,27 @@ def exp24():
         for x_axis in x_axes:
             plot(directory, series, x_axis, outdir, metrics, filtermap, prefix="groups-{}_".format(num_groups))
 
-            
-exp23()
+def exp25():
+    directory = "out/zs25"
+    series = "lo"
+    outdir="plots/zs25_synthetic_distractionbased"
+    filtermap = {
+        "lr":"0.001",
+    }
+    x_axes = ["prt", "lr", "seed", "dseed"]
+    for x_axis in x_axes:
+        plot(directory, series, x_axis, outdir, metrics)
+
+
+def exp26():
+    directory = "out/zs26"
+    series = "lo"
+    outdir="plots/zs26_synthetic_distractionbased"
+    x_axes = ["prt"]
+    for x_axis in x_axes:
+        plot(directory, series, x_axis, outdir, metrics)
+
+        
+exp26()
 
 
