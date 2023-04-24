@@ -4,18 +4,22 @@ from egtsimplex import egtsimplex
 import re
 import torch
 import torch.nn as nn
+import os
 
 from utils.models import linear_model, mlp_model, deep_linear_model
 from utils.utils_loss import (log_prp_Loss as prp_loss, 
-                              nll_loss)
+                              nll_loss, democracy_loss, bi_prp_loss)
 
 
 nodemap={0:"A", 1:"B", 2:"C"}
 colormap = {
     "prp": "red",
+    "prp_basic": "coral",
     "nll": "b",
-    "prp1":"g",
-    "prp2": "m",
+    "uniform": "cyan",
+    "bi_prp": "lightsalmon",
+    # "prp1":"g",
+    # "prp2": "m",
 }
 
 def regression(model, input, target_output, epochs=100, lr=0.01, weight_decay=0.1):
@@ -40,18 +44,46 @@ def regression(model, input, target_output, epochs=100, lr=0.01, weight_decay=0.
 
 
 
-def get_loss(losstype, ys, logits):
+def get_loss_fn(losstype):
     if losstype == "prp":
-        loss_fn = prp_loss()
-        loss = loss_fn(logits, ys)
+        # loss_fn = prp_loss(use_weighting=True)
+        loss_fn = prp_loss(use_weighting=False)
     elif losstype == "nll":
         loss_fn = nll_loss()
-        loss, _ = loss_fn(logits, ys)
     elif losstype == "prp_basic":
         loss_fn = prp_loss(use_weighting=False)
-        loss = loss_fn(logits, ys)
+    elif losstype == "uniform":
+        loss_fn = democracy_loss()
+    elif losstype == "bi_prp":
+        # loss_fn = bi_prp_loss()
+        loss_fn = bi_prp_loss(use_weighting=False)
+    elif losstype == "bi_prp_basic":
+        loss_fn = bi_prp_loss(use_weighting=False)
     else:
-        assert False, "Unknown loss type."
+        assert False, "Unknown loss type." + losstype
+    return loss_fn
+
+def get_loss(losstype, ys, logits):
+    if losstype == "nll":
+        loss_fn = nll_loss()
+        loss, _ = loss_fn(logits, ys)
+    elif losstype == "prp":
+        # loss_fn = prp_loss(use_weighting=True)
+        loss_fn = prp_loss(use_weighting=False)
+    elif losstype == "nll":
+        loss_fn = nll_loss()
+    elif losstype == "prp_basic":
+        loss_fn = prp_loss(use_weighting=False)
+    elif losstype == "uniform":
+        loss_fn = democracy_loss()
+    elif losstype == "bi_prp":
+        # loss_fn = bi_prp_loss()
+        loss_fn = bi_prp_loss(use_weighting=False)
+    elif losstype == "bi_prp_basic":
+        loss_fn = bi_prp_loss(use_weighting=False)
+    else:
+        assert False, "Unknown loss type." + losstype
+    loss = loss_fn(logits, ys)
     return loss
 
 def update(losstype, model, input, ys_list, lr=0.1):
@@ -61,7 +93,12 @@ def update(losstype, model, input, ys_list, lr=0.1):
 
     loss = 0
     for ys in ys_list:
-        loss += get_loss(losstype, ys.unsqueeze(0), logits)
+        curr_loss = get_loss(losstype, ys.unsqueeze(0), logits)
+        # curr_loss = loss_fn(ys.unsqueeze(0), logits)
+        if type(curr_loss) is tuple:
+            loss +=  curr_loss[0]
+        else:
+            loss += curr_loss
         
     model.zero_grad()
     loss.backward()
@@ -94,9 +131,11 @@ def show_vector_field(losstypes, outfile, ys_list, in_dim=5, hidden_dim=2, model
     input = np.ones((1,in_dim))
     Y = np.array(ys_list)   # (n_batch * n_outputs)
 
-    fig, axs = plt.subplots(len(losstypes), 1, figsize=(20,20*len(losstypes)))
+    fig, axs = plt.subplots(len(losstypes), 1, figsize=(13*len(losstypes), 13))
 
     for i, losstype in enumerate(losstypes):
+
+        # loss_fn = get_loss_fn(losstype)
 
         def f(x,t):
             if np.min(x) <= 1e-5:
@@ -150,9 +189,10 @@ def show_vector_field(losstypes, outfile, ys_list, in_dim=5, hidden_dim=2, model
             a = axs[i]
             
         dynamics.plot_simplex(a)
-        # a.set_title(losstype)
-        a.title.set_fontsize(48)
+        a.set_title(losstype)
+        a.title.set_fontsize(30)
 
+    os.makedirs(os.path.dirname(outfile), exist_ok=True)
     plt.savefig(outfile)
 
 
@@ -161,25 +201,19 @@ ys_map={
     "1AB-1AC": [[1,1,0],[1,0,1]],
     }
 
-losstypes=["nll","prp"]
-labels = ["1AB-1AC", "1AB"]
-modeltypes = ["mlp"]
-in_dims = [1]
-hidden_dims = [10]
-hidden_layers = [1,2,5,10]
-output_dims = [4]
-samples=1
-minmaxes=[0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
-for loss in losstypes:
-    for label in labels:
-        ys_list = ys_map[label]
-        for modeltype in modeltypes:
-            for in_dim in in_dims:
-                for hidden_dim in hidden_dims:
-                    for hidden_layer in hidden_layers:
-                        for output_dim in output_dims:
-                            for minmax in minmaxes:
-                                outfile = "plots/tmp/vectorfields_{}_{}_{}_{}_{}_{}_{}_{}.png".format(label, modeltype, in_dim, hidden_dim, output_dim, minmax, loss, hidden_layer)
+def run(config):
+    for loss in config["losstypes"]:
+        for label in config["labels"]:
+            ys_list = ys_map[label]
+            for modeltype in config["modeltypes"]:
+                for in_dim in config["in_dims"]:
+                    for hidden_dim in config["hidden_dims"]:
+                        for hidden_layer in config["hidden_layers"]:
+                            for output_dim in config["output_dims"]:
+                                for minmax in config["minmaxes"]:
+                                    exp = config["exp"]
+                                    samples = config["samples"]
+                                    outfile = "plots/vectorfields/exp{}/vectorfields_{}_{}_{}_{}_{}_{}_{}_{}.png".format(exp, label, modeltype, in_dim, hidden_dim, output_dim, minmax, loss, hidden_layer)
                                 print("\n---------------")
                                 print(outfile)
                                 show_vector_field([loss], outfile , ys_list=ys_list,
@@ -187,4 +221,48 @@ for loss in losstypes:
                                                   modeltype=modeltype, output_dim=output_dim,
                                                   samples=samples, min_total=minmax, max_total=minmax, hidden_layers=hidden_layer)
                             
+
+
+config1 = {
+    "exp": 1,
+    "losstypes": ["prp", "bi_prp", "nll","uniform"],
+    "labels": ["1AB-1AC"],
+    "modeltypes": ["logit"],
+    "in_dims": [1],
+    "hidden_dims": [0],
+    "hidden_layers": [0],
+    "output_dims": [3],
+    "samples":1,
+    "minmaxes":[0.1],
+}
+
+config2 = {
+    "exp": 2,
+    "losstypes": ["nll","uniform", "prp", "bi_prp"],
+    "labels": ["1AB"],
+    "modeltypes": ["mlp"],
+    "in_dims": [1],
+    "hidden_dims": [100],
+    "hidden_layers": [0,1,3,5,10],
+    "output_dims": [3],
+    "samples":1,
+    "minmaxes":[0.1],
+}
+
+config3 = {
+    "exp": 3,
+    "losstypes": ["prp", "bi_prp", "nll","uniform"],
+    "labels": ["1AB-1AC"],
+    "modeltypes": ["mlp"],
+    "in_dims": [1],
+    "hidden_dims": [100],
+    "hidden_layers": [1,3,5,10],
+    "output_dims": [3],
+    "samples":1,
+    "minmaxes":[0.1],
+}
+
+run(config1)
+run(config2)
+run(config3)
 

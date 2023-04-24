@@ -116,9 +116,10 @@ class log_prp_Loss(torch.nn.Module):
         return loss
 
 class bi_prp_loss(torch.nn.Module):
-    def __init__(self):
+    def __init__(self, use_weighting=True):
         super(bi_prp_loss, self).__init__()
- 
+        self.use_weighting = use_weighting
+
     def forward(self, inputs, targets, debug=False):
 
 
@@ -142,10 +143,11 @@ class bi_prp_loss(torch.nn.Module):
         neg_loss = (neg_weight * neg_logits).sum(dim=1)
         loss = neg_loss + pos_loss
 
-        # input specific coefficient
-        coefficient = 1.0 - (input_sm * targets).sum(dim=1)
-        # coefficient = torch.maximum(torch.tensor(0.0), coefficient - 0.3)
-        loss = coefficient.detach() * loss
+        if self.use_weighting:
+            # input specific coefficient
+            coefficient = 1.0 - (input_sm * targets).sum(dim=1)
+            # coefficient = torch.maximum(torch.tensor(0.0), coefficient - 0.3)
+            loss = coefficient.detach() * loss
 
         loss = loss.mean()
         return loss

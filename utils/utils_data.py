@@ -805,9 +805,10 @@ def generate_synthetic_hypercube_dataloader(partial_rate, batch_size, seed, num_
                                             feature_dim=5,
                                             class_sep=0.1,
                                             noise_model="distancebased",
+                                            distractionbased_ratio=1.0,
                                             use_cache=True):
     
-    cachepath = "cache/pr-{}_classes-{}_samples-{}_features-{}_sep-{}_noise-{}_seed-{}.npz".format(partial_rate, num_classes, num_samples, feature_dim, class_sep, noise_model, seed)
+    cachepath = "cache/pr-{}_classes-{}_samples-{}_features-{}_sep-{}_noise-{}_dratio-{}_seed-{}.npz".format(partial_rate, num_classes, num_samples, feature_dim, class_sep, noise_model, distractionbased_ratio, seed)
 
     if use_cache and os.path.isfile(cachepath):
         print("Loading dataset from cache", cachepath)
@@ -822,7 +823,7 @@ def generate_synthetic_hypercube_dataloader(partial_rate, batch_size, seed, num_
         valid_partial_y = npzfile['arr_7']
         test_partial_y = npzfile['arr_8']
     else:        
-        train_X, valid_X, test_X, train_y, valid_y, test_y, train_partial_y, valid_partial_y, test_partial_y = generate_synthetic_hypercube_data(partial_rate, seed, num_classes, num_samples, feature_dim, class_sep, noise_model)
+        train_X, valid_X, test_X, train_y, valid_y, test_y, train_partial_y, valid_partial_y, test_partial_y = generate_synthetic_hypercube_data(partial_rate, seed, num_classes, num_samples, feature_dim, class_sep, noise_model, distractionbased_ratio)
         os.makedirs(os.path.dirname(cachepath), exist_ok=True)
         np.savez(cachepath, train_X, valid_X, test_X, train_y, valid_y, test_y, train_partial_y, valid_partial_y, test_partial_y)
 
@@ -886,7 +887,8 @@ def generate_synthetic_hypercube_data(partial_rate, seed,
                                       num_samples=1000,
                                       feature_dim=5,
                                       class_sep=0.1,
-                                      noise_model="distancebased"):
+                                      noise_model="distancebased",
+                                      distractionbased_ratio=1.0):
 
     ## Generate Samples
     X, y, centroids, y_centroids = make_classification( n_samples=num_samples,
@@ -929,7 +931,9 @@ def generate_synthetic_hypercube_data(partial_rate, seed,
             y_curr = y[indices]
             X_curr = X[indices]
             distractor_count = int(partial_rate * len(indices))
-            for class_distractor in range(num_classes):
+            # we only have distractors from int(num_classes * distractionbased_ratio) classes
+            distractor_classes = np.random.choice(range(num_classes), int(num_classes * distractionbased_ratio), replace=False)
+            for class_distractor in distractor_classes:
                 if class_distractor== class_curr:
                     continue
                 distractors = np.random.choice(indices, distractor_count, replace=False)

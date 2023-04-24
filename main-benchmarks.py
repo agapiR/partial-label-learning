@@ -111,6 +111,7 @@ parser.add_argument('-nf', help='number of features.', default=5, type=int, requ
 parser.add_argument('-csep', help='class separation.', default=0.1, type=float, required=False)        
 parser.add_argument('-dseed', help='Random seed for data generation.', default=42, type=int, required=False)
 parser.add_argument('-noise_model', help='Noise model', type=str, default="distancebased", choices=['distancebased', 'distractionbased'], required=False)
+parser.add_argument('-distractionbased_ratio', help='ratio of classes that are distractors for a given class.', default=1.0, type=float, required=False)        
 args = parser.parse_args()
 
 ## Output directory
@@ -166,7 +167,7 @@ elif args.ds.startswith('synthetic'):
      partial_matrix_valid_loader, valid_loader,
      partial_matrix_test_loader, test_loader,
      train_partial_Y, valid_partial_Y, test_partial_Y,
-     dim, K) = generate_synthetic_hypercube_dataloader(args.prt, args.bs, args.dseed, num_classes=args.nc, num_samples=args.ns, feature_dim=args.nf, class_sep=args.csep, noise_model=args.noise_model)
+     dim, K) = generate_synthetic_hypercube_dataloader(args.prt, args.bs, args.dseed, num_classes=args.nc, num_samples=args.ns, feature_dim=args.nf, class_sep=args.csep, noise_model=args.noise_model, distractionbased_ratio=args.distractionbased_ratio)
     train_givenY = train_partial_Y
     train_givenY = torch.tensor(train_givenY)
 
