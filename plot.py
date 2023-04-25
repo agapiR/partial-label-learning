@@ -36,6 +36,7 @@ is_float = {
     "seed": True,
     "dseed": True,
     "distractionbased_ratio": True,
+    "logit_decay": True,
 }
 
 def pr_map(pr):
@@ -124,7 +125,10 @@ def plot(directory, series, x_axis, outdir, metrics, filtermap={}, prefix="", ti
         fig, axs = plt.subplots(1, len(metrics), figsize=(size, size))
     for i, m in enumerate(metrics):
         for s in result[m].keys():
-            color = color_map[s]
+            if series == "lo":
+                color = color_map[s]
+            else:
+                color = None
             xs = result[m][s].keys()
             ys = result[m][s].values()
             sorted_pairs = sorted(zip(xs, ys))
@@ -148,8 +152,12 @@ def plot(directory, series, x_axis, outdir, metrics, filtermap={}, prefix="", ti
             else:
                 axis= axs[i%3, i//3]
 
-            axis.plot(xs, ys_med, color=color, label=s+"-median", marker='o')
-            axis.plot(xs, ys_max, color=color, label=s+"-max", marker='o', linestyle='dashed')
+            if color is None:
+                axis.plot(xs, ys_med, label=s+"-median", marker='o')
+                axis.plot(xs, ys_max, label=s+"-max", marker='o', linestyle='dashed')
+            else:
+                axis.plot(xs, ys_med, color=color, label=s+"-median", marker='o')
+                axis.plot(xs, ys_max, color=color, label=s+"-max", marker='o', linestyle='dashed')
             # axs[i%3, i//3].errorbar(xs, ys_mean, yerr=ys_errors, color=color, elinewidth=3, label=s, marker='o')
             axis.set_title(title)
             axis.title.set_fontsize(28)
@@ -358,9 +366,10 @@ def exp27():
     outdir="plots/zs27_synthetic_distractionbased"
     metrics=["Test Accuracy"]
     x_axes = ["distractionbased_ratio"]
-    for prt in ["1.0", "0.9", "0.8", "0.7", "0.6", "0.5", "0.4", "0.3", "0.2", "0.1"]:        
+    for prt in ["0.9", "0.8", "0.7", "0.6", "0.5", "0.3", "0.2", "0.1", "0.05"]:        
         filtermap = {
             "lo": ["prp", "nll", "lws", "rc", "democracy"],
+            "distractionbased_ratio": ['0.9', '0.8', '0.7', '0.6', '0.5', '0.4', '0.3', '0.2', '0.1'],
             "prt":[prt],
         }
         title = "p-rate = {}".format(prt)
@@ -368,5 +377,41 @@ def exp27():
         for x_axis in x_axes:
             plot(directory, series, x_axis, outdir, metrics, filtermap, prefix="prt-{}_".format(prt), title=title, xlabel=xlabel)
 
-        
-exp27()
+def exp28():
+    directory = "out/zs28"
+    series = "lo"
+    outdir="plots/zs28_biprp"
+    x_axes = ["logit_decay"]
+    for x_axis in x_axes:
+        plot(directory, series, x_axis, outdir, metrics)
+
+def exp29():
+    directory = "out/zs29"
+    series = "lo"
+    outdir="plots/zs29_synthetic_distractionbased"
+    metrics=["Test Accuracy"]
+    x_axes = ["distractionbased_ratio"]
+    for prt in ["0.9", "0.8", "0.7", "0.6", "0.5", "0.3", "0.2", "0.1", "0.05"]:        
+        filtermap = {
+            "lo": ["prp", "nll", "lws", "rc", "democracy", "bi_prp"],
+            "distractionbased_ratio": ['0.9', '0.8', '0.7', '0.6', '0.5', '0.4', '0.3', '0.2', '0.1'],
+            "prt":[prt],
+        }
+        title = "p-rate = {}".format(prt)
+        xlabel = "s-rate"
+        for x_axis in x_axes:
+            plot(directory, series, x_axis, outdir, metrics, filtermap, prefix="prt-{}_".format(prt), title=title, xlabel=xlabel)
+
+    x_axes = ["prt"]
+    for distractionbased_ratio in ["0.1", "0.3", "0.5", "0.7", "0.9"]:        
+        filtermap = {
+            "lo": ["prp", "nll", "lws", "rc", "democracy", "bi_prp"],
+            "distractionbased_ratio":[distractionbased_ratio],
+        }
+        title = "s-rate = {}".format(distractionbased_ratio)
+        xlabel = "p-rate"
+        for x_axis in x_axes:
+            plot(directory, series, x_axis, outdir, metrics, filtermap, prefix="dist-{}_".format(distractionbased_ratio), title=title, xlabel=xlabel)
+
+            
+exp29()

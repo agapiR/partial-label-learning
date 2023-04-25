@@ -111,70 +111,64 @@ class log_prp_Loss(torch.nn.Module):
             loss = coefficient.detach() * loss
 
 
+        print("logits:", inputs.mean(dim=0)[0].numpy(force=True))
         loss = torch.mean(loss)
         
         return loss
 
 class bi_prp_loss(torch.nn.Module):
-    def __init__(self, use_weighting=True):
+    def __init__(self, use_weighting=True, from_logits=True, logit_decay=0.05):
         super(bi_prp_loss, self).__init__()
         self.use_weighting = use_weighting
+        self.from_logits = from_logits
+        self.logit_decay = logit_decay
 
     def forward(self, inputs, targets, debug=False):
 
-
-        device = inputs.device
-        input_sm = F.softmax(inputs, dim=1)
-
-        # monitor logits
-        if debug:
-            logits = targets*inputs
-            print("avg pos logit value:", torch.mean(logits).detach())
-            print("avg logit value:", torch.mean(inputs).detach())
-
-        
+        probs = F.softmax(inputs, dim=1)
         pos_logits = inputs * targets
-        pos_loss = (-1 * pos_logits).sum(dim=1)
-
         neg_logits = inputs * (1-targets)
-        k = targets.sum(1, keepdims=True)
-        k_neg = (1-targets).sum(1, keepdims=True)
-        neg_weight = (k/(k_neg + EPS)).detach()
-        neg_loss = (neg_weight * neg_logits).sum(dim=1)
-        loss = neg_loss + pos_loss
-
-        if self.use_weighting:
-            # input specific coefficient
-            coefficient = 1.0 - (input_sm * targets).sum(dim=1)
-            # coefficient = torch.maximum(torch.tensor(0.0), coefficient - 0.3)
-            loss = coefficient.detach() * loss
-
-        loss = loss.mean()
-        return loss
-
-class bi_prp2_loss(torch.nn.Module):
-    def __init__(self):
-        super(bi_prp2_loss, self).__init__()
- 
-    def forward(self, inputs, targets):
-        logprobs = F.log_softmax(inputs, dim=1)
-
+        
+        logprobs = F.log_softmax(inputs, dim=1)        
         pos_logprobs = logprobs * targets
         neg_logprobs = logprobs * (1-targets)
+
         
+        # monitor logits
+        if debug:
+            print("avg pos logit value:", torch.mean(pos_logits).detach())
+            print("avg logit value:", torch.mean(inputs).detach())
+
+        # number of allowed and disallowed
         k = targets.sum(1, keepdims=True)
         k_neg = (1-targets).sum(1, keepdims=True)
         k_neg = torch.maximum(torch.tensor(1.0), k_neg)
 
-        loss = (-1.0 * pos_logprobs + k / k_neg * neg_logprobs).sum(dim=1)
+        pos_weight = -1/k
+        neg_weight = 1/k_neg
 
-        # input specific coefficient
-        probs = F.softmax(inputs, dim=1)
-        coefficient = (probs * (1-targets)).sum(dim=1)
-        loss = coefficient.detach() * loss
+        if self.from_logits:
+            pos_loss = (pos_weight * pos_logits).sum(dim=1)
+            neg_loss = (neg_weight * neg_logits).sum(dim=1)
+        else:
+            pos_loss = (pos_weight * pos_logprobs).sum(dim=1)
+            neg_loss = (neg_weight * neg_logprobs).sum(dim=1)
+            
+        loss = neg_loss + pos_loss
 
+
+        # push logits down
+        loss += self.logit_decay * torch.square(inputs).sum(dim=1)
+
+        if self.use_weighting:
+            # input specific coefficient
+            coefficient = (probs * (1-targets)).sum(dim=1)
+            loss = coefficient.detach() * loss
+
+        # print("logits:", inputs.mean(dim=0)[0].numpy(force=True))
         loss = loss.mean()
         return loss
+
     
 class bi_prp_nll_loss(torch.nn.Module):
     def __init__(self):
