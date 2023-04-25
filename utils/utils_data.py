@@ -276,10 +276,18 @@ def generate_uniform_cv_candidate_labels(dataname, train_labels, partial_type):
     return partialY
 
 
-def generate_cv_dataloader(dataname, batch_size, partial_rate, partial_type, cluster, num_groups=10):
+def generate_cv_dataloader(dataname, batch_size, partial_rate, partial_type, noise_model="uniform", num_groups=10, distractionbased_ratio="0.0"):
     (full_train_loader, full_test_loader, train_loader, test_loader, ordinary_train_dataset, test_dataset, num_classes) = prepare_cv_datasets(dataname, batch_size)
-    partial_matrix_train_loader, train_partial_Y, dim = prepare_loaders_for_cv_candidate_labels(dataname, full_train_loader, batch_size, partial_rate, partial_type, cluster, num_groups)
-    partial_matrix_test_loader, test_partial_Y, dim = prepare_loaders_for_cv_candidate_labels(dataname, full_test_loader, batch_size, partial_rate, partial_type, cluster, num_groups)
+    partial_matrix_train_loader, train_partial_Y, dim = prepare_loaders_for_cv_candidate_labels(dataname, full_train_loader, batch_size, partial_rate,
+                                                                                                partial_type=partial_type,
+                                                                                                noise_model=noise_model,
+                                                                                                num_groups=num_groups,
+                                                                                                distractionbased_ratio=distractionbased_ratio)
+    partial_matrix_test_loader, test_partial_Y, dim = prepare_loaders_for_cv_candidate_labels(dataname, full_test_loader, batch_size, partial_rate,
+                                                                                              partial_type=partial_type,
+                                                                                              noise_model=noise_model,
+                                                                                              num_groups=num_groups,
+                                                                                              distractionbased_ratio=distractionbased_ratio)                                                                                              
 
     # TODO
     partial_matrix_valid_loader = partial_matrix_test_loader
@@ -472,19 +480,29 @@ def prepare_cv_datasets_hyper(dataname, batch_size):
             validationset, num_classes)
 
 
-def prepare_loaders_for_cv_candidate_labels(dataname, full_loader, batch_size, partial_rate, partial_type, cluster, num_groups):
+def prepare_loaders_for_cv_candidate_labels(dataname, full_loader, batch_size, partial_rate,
+                                            partial_type="01",
+                                            noise_model="uniform",
+                                            num_groups=10,
+                                            distractionbased_ratio=0.0):
     for i, (data, labels) in enumerate(full_loader):
-        # K = torch.max(labels) + 1  # K is number of classes, full_train_loader is full batch
-        if cluster==1:
+
+        if noise_model == "distractionbased":
+            num_classes = (torch.max(labels) - torch.min(labels) + 1).numpy(force=True)
+            partialY = add_noise_distractionbased(data, labels, partial_rate, num_classes, distractionbased_ratio)
+        elif noise_model == "cluster1":
             partialY = generate_cluster_based_candidate_labels(data, labels)
-        elif cluster==2:
+        elif noise_model == "cluster2":
             partialY = generate_cluster_based_candidate_labels2(data, labels, partial_rate)
-        elif cluster==3:
+        elif noise_model == "cluster3":
             partialY = generate_cluster_based_candidate_labels3(data, labels, partial_rate)
-        elif cluster==4:
+        elif noise_model == "instancebased":
             partialY = generate_instance_based_candidate_labels(data, labels, partial_rate, dataname, num_groups=num_groups)
-        else:
+        elif noise_model == "uniform":
             partialY = generate_uniform_cv_candidate_labels(dataname, labels, partial_type)
+        else:
+            assert False, "Unknown noise model: " + noise_model
+            
         # partial_matrix_dataset = gen_index_dataset(data, partialY.float(), partialY.float())
         partial_matrix_dataset = gen_index_dataset(data, partialY.float(), labels.float())
         partial_matrix_train_loader = torch.utils.data.DataLoader(
@@ -912,32 +930,12 @@ def generate_synthetic_hypercube_data(partial_rate, seed,
                                                         return_centroids=True)
 
     ## Generate Partial Labels
-    partial_y = np.zeros((num_samples, num_classes))
-    partial_y[np.arange(y.size), y] = 1
     if noise_model == "distancebased":
-        num_distractors = int(partial_rate*num_classes)
-        sample_centroid_distances = cdist(X, Y=centroids)
-        for x in range(num_samples):
-            candidate_distractors_sorted = list(np.argsort(sample_centroid_distances[x]))
-            distractors = candidate_distractors_sorted[:num_distractors]
-            # if the true label is selected among the distractors, replace with additional distractor
-            if y[x] in distractors:
-                distractors.append(candidate_distractors_sorted[num_distractors-1])
-            partial_y[x, distractors] = 1
+        partial_y = add_noise_distancebased(X, y, partial_rate, num_classes, centroids)
     elif noise_model == "distractionbased":
-        # partial_rate specifies the number of times a distractor occurrs in some label for each class
-        for class_curr in range(num_classes):
-            indices = np.where(y==class_curr)[0]
-            y_curr = y[indices]
-            X_curr = X[indices]
-            distractor_count = int(partial_rate * len(indices))
-            # we only have distractors from int(num_classes * distractionbased_ratio) classes
-            distractor_classes = np.random.choice(range(num_classes), int(num_classes * distractionbased_ratio), replace=False)
-            for class_distractor in distractor_classes:
-                if class_distractor== class_curr:
-                    continue
-                distractors = np.random.choice(indices, distractor_count, replace=False)
-                partial_y[distractors, class_distractor] = 1
+        partial_y = add_noise_distractionbased(X, y, partial_rate, num_classes, distractionbased_ratio)
+    else:
+        assert False, "Unknown noise model" + noise_model
     
     ## Create Splits
     X = np.float32(X)
@@ -966,6 +964,45 @@ def generate_synthetic_hypercube_data(partial_rate, seed,
     test_X = scaler.transform(test_X)
 
     return train_X, valid_X, test_X, train_y, valid_y, test_y, train_partial_y, valid_partial_y, test_partial_y
+
+
+def add_noise_distancebased(X, y, partial_rate, num_classes, centroids):
+    num_classes = torch.max(y) - torch.min(y) + 1
+    num_samples = y.shape[0]
+    partial_y = torch.zeros(num_samples, num_classes)
+    partial_y[torch.arange(num_samples), y] = 1
+    
+    num_distractors = int(partial_rate*num_classes)
+    sample_centroid_distances = cdist(X, Y=centroids)
+    for x in range(num_samples):
+        candidate_distractors_sorted = list(np.argsort(sample_centroid_distances[x]))
+        distractors = candidate_distractors_sorted[:num_distractors]
+        # if the true label is selected among the distractors, replace with additional distractor
+        if y[x] in distractors:
+            distractors.append(candidate_distractors_sorted[num_distractors-1])
+        partial_y[x, distractors] = 1
+    return partial_y
+
+def add_noise_distractionbased(X, y, partial_rate, num_classes, distractionbased_ratio):
+    num_classes = torch.max(y) - torch.min(y) + 1
+    num_samples = y.shape[0]
+    partial_y = torch.zeros(num_samples, num_classes)
+    partial_y[torch.arange(num_samples), y] = 1
+    
+    for class_curr in range(num_classes):
+        indices = np.where(y==class_curr)[0]
+        y_curr = y[indices]
+        X_curr = X[indices]
+        distractor_count = int(partial_rate * len(indices))
+        # we only have distractors from int(num_classes * distractionbased_ratio) classes
+        distractor_classes = np.random.choice(range(num_classes), int(num_classes * distractionbased_ratio), replace=False)
+        for class_distractor in distractor_classes:
+            if class_distractor== class_curr:
+                continue
+            distractors = np.random.choice(indices, distractor_count, replace=False)
+            partial_y[distractors, class_distractor] = 1
+    return partial_y
+
 
 
 ## Synthetic Hierarchical Dataset PLL generation

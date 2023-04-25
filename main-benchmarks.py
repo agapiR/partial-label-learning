@@ -112,7 +112,8 @@ parser.add_argument('-ns', help='number of samples.', default=1000, type=int, re
 parser.add_argument('-nf', help='number of features.', default=5, type=int, required=False)                  
 parser.add_argument('-csep', help='class separation.', default=0.1, type=float, required=False)        
 parser.add_argument('-dseed', help='Random seed for data generation.', default=42, type=int, required=False)
-parser.add_argument('-noise_model', help='Noise model', type=str, default="distancebased", choices=['distancebased', 'distractionbased'], required=False)
+parser.add_argument('-noise_model', help='Noise model', type=str, required=True,
+                    choices=['distancebased', 'distractionbased', "cluster1", "cluster2", "cluster3", "instancebased", "uniform"])
 parser.add_argument('-distractionbased_ratio', help='ratio of classes that are distractors for a given class.', default=1.0, type=float, required=False)        
 args = parser.parse_args()
 
@@ -161,7 +162,10 @@ elif args.ds in ['mnist', 'kmnist', 'fashion', 'cifar10', 'cifar100', 'shierarch
      partial_matrix_valid_loader, valid_loader,
      partial_matrix_test_loader, test_loader,
      train_partial_Y, valid_partial_Y, test_partial_Y,
-     dim, K) = generate_cv_dataloader(dataname=args.ds, batch_size=args.bs, partial_rate = args.prt, partial_type=args.pr, cluster=args.cluster, num_groups=args.num_groups)
+     dim, K) = generate_cv_dataloader(dataname=args.ds, batch_size=args.bs, partial_rate = args.prt, partial_type=args.pr,
+                                      noise_model=args.noise_model,
+                                      num_groups=args.num_groups,
+                                      distractionbased_ratio=args.distractionbased_ratio)
     train_givenY = train_partial_Y
         
 elif args.ds.startswith('synthetic'):
