@@ -37,18 +37,32 @@ is_float = {
     "dseed": True,
     "distractionbased_ratio": True,
     "logit_decay": True,
+    "case": False,
 }
 
 def pr_map(pr):
+    result = {}
+    
     huniform_match = re.match("h([0-9]*)uniform_(.*)", pr)
     uniform_match = re.match("uniform_(.*)", pr)
 
-    if huniform_match:
-        prt = float(huniform_match.groups()[1])
-        num_groups = float(huniform_match.groups()[0])
-        return prt, num_groups
+    if pr == "01":
+        result["case"] = "Case 1"
+    elif pr == "02":
+        result["case"] = "Case 2"
+    elif pr == "04":
+        result["case"] = "Case 3"
+    elif pr == "03":
+        result["case"] = "Case 4"
+    elif pr == "10":
+        result["case"] = "Case 5"
+    elif huniform_match:
+        result["prt"] = float(huniform_match.groups()[1])
+        result["num_groups"] = float(huniform_match.groups()[0])
+    else:
+        assert False, "Unhandled pr value: " + pr
 
-    # TODO otherp pr values
+    return result
 
 
 color_map = {
@@ -84,13 +98,19 @@ def plot(directory, series, x_axis, outdir, metrics, filtermap={}, prefix="", ti
                 if key in filtermap and argdict[key] not in filtermap[key]:
                     skipfile=True
                 if key == "pr":
-                    prt, num_groups = pr_map(value)
-                    argdict["prt"] = prt
-                    argdict["num_groups"] = num_groups
-                    if "prt" in filtermap and prt not in float(filtermap["prt"]):
-                        skipfile=True
-                    if "num_groups" in filtermap and num_groups not in float(filtermap["num_groups"]):
-                        skipfile=True
+                    pr_dict = pr_map(value)
+                    for k in pr_dict:
+                        argdict[k] = pr_dict[k]
+                        if k in filtermap and k not in filtermap[k]:
+                            skipfile=True
+                            
+                    # prt, num_groups = pr_map(value)
+                    # argdict["prt"] = prt
+                    # argdict["num_groups"] = num_groups
+                    # if "prt" in filtermap and prt not in float(filtermap["prt"]):
+                    #     skipfile=True
+                    # if "num_groups" in filtermap and num_groups not in float(filtermap["num_groups"]):
+                    #     skipfile=True
                     
             if skipfile:
                 continue
@@ -441,5 +461,15 @@ def exp30():
         for x_axis in x_axes:
             plot(directory, series, x_axis, outdir, metrics, filtermap, prefix="dist-{}_".format(distractionbased_ratio), title=title, xlabel=xlabel)
 
+def exp31():
+    directory = "out/zs31"
+    series = "lo"
+    outdir="plots/zs31_cifar10"
+    metrics=["Test Accuracy"]
+    x_axes = ["case"]
+    xlabel = "Data Generation Case"
+    title = "Cifar10"
+    for x_axis in x_axes:
+        plot(directory, series, x_axis, outdir, metrics, xlabel=xlabel, title=title)
             
-exp30()
+exp31()
