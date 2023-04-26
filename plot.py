@@ -310,14 +310,25 @@ def exp21():
 def exp22():
     directory = "out/zs22"
     series = "lo"
-    x_axes = ["num_groups"]
-    outdir="plots/zs22_shierarchy32"
-    prt="0.2"    
-    filtermap = {
-        "prt":[prt],
-    }
-    for x_axis in x_axes:
-        plot(directory, series, x_axis, outdir, metrics, filtermap, prefix="prt-{}_".format(prt))
+    for csep in ["0.5", "1.0", "1.5", "2.0"]:        
+        outdir="plots/zs22_shierarchy32_csep_{}".format(csep)
+        x_axes = ["num_groups"]
+        for prt in ["0.9", "0.8", "0.7", "0.6", "0.5", "0.4", "0.3", "0.2", "0.1"]:
+            filtermap = {
+                "prt":[prt],
+            }
+            for x_axis in x_axes:
+                plot(directory, series, x_axis, outdir, metrics, filtermap, prefix="prt-{}_".format(prt))    
+        filtermap = {
+        }
+        x_axes = ["prt"]
+        for num_groups in ["1", "2", "4", "8", "16"]:        
+            filtermap = {
+                "num_groups":[num_groups],
+            }
+            for x_axis in x_axes:
+                plot(directory, series, x_axis, outdir, metrics, filtermap, prefix="groups-{}_".format(num_groups))
+
 
 def exp23():
     directory = "out/zs23"
@@ -472,4 +483,4 @@ def exp31():
     for x_axis in x_axes:
         plot(directory, series, x_axis, outdir, metrics, xlabel=xlabel, title=title)
             
-exp31()
+exp22()
