@@ -413,5 +413,33 @@ def exp29():
         for x_axis in x_axes:
             plot(directory, series, x_axis, outdir, metrics, filtermap, prefix="dist-{}_".format(distractionbased_ratio), title=title, xlabel=xlabel)
 
+def exp30():
+    directory = "out/zs30"
+    series = "lo"
+    outdir="plots/zs30_cifar100"
+    metrics=["Test Accuracy"]
+    x_axes = ["distractionbased_ratio"]
+    for prt in ["0.9", "0.7", "0.5", "0.3", "0.1"]:        
+        filtermap = {
+            "lo": ["prp", "nll", "lws", "rc", "democracy", "bi_prp"],
+            "distractionbased_ratio": ['0.9', '0.7', '0.5', '0.3', '0.1'],
+            "prt":[prt],
+        }
+        title = "p-rate = {}".format(prt)
+        xlabel = "s-rate"
+        for x_axis in x_axes:
+            plot(directory, series, x_axis, outdir, metrics, filtermap, prefix="prt-{}_".format(prt), title=title, xlabel=xlabel)
+
+    x_axes = ["prt"]
+    for distractionbased_ratio in ["0.1", "0.3", "0.5", "0.7", "0.9"]:        
+        filtermap = {
+            "lo": ["prp", "nll", "lws", "rc", "democracy", "bi_prp"],
+            "distractionbased_ratio":[distractionbased_ratio],
+        }
+        title = "s-rate = {}".format(distractionbased_ratio)
+        xlabel = "p-rate"
+        for x_axis in x_axes:
+            plot(directory, series, x_axis, outdir, metrics, filtermap, prefix="dist-{}_".format(distractionbased_ratio), title=title, xlabel=xlabel)
+
             
-exp29()
+exp30()
