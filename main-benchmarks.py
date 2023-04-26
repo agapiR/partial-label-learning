@@ -17,7 +17,7 @@ from utils.utils_loss import (rc_loss, cc_loss, lws_loss,
                               log_prp_Loss as prp_loss, 
                               h_prp_Loss as h_prp_loss, 
                               joint_prp_on_logits as ll_loss,
-                              bi_prp_loss, bi_prp2_loss, bi_prp_nll_loss, nll_loss, democracy_loss)
+                              bi_prp_loss, bi_prp_nll_loss, nll_loss, democracy_loss)
 
 # TODO: read as argument
 NO_IMPROVEMENT_TOLERANCE=20
@@ -102,6 +102,8 @@ parser.add_argument('-num_groups',
                     type=int,
                     default=10,
                     required=False)
+parser.add_argument('-clip', help='gradient clipping', type=float, default=None, required=False)
+parser.add_argument('-logit_decay', help='L2 loss on the logits', type=float, default=0.0, required=False)
 
 ## Synthetic data hyperparameters
 parser.add_argument('-prt', help='partial rate.', default=0.1, type=float, required=False)                  
@@ -110,7 +112,9 @@ parser.add_argument('-ns', help='number of samples.', default=1000, type=int, re
 parser.add_argument('-nf', help='number of features.', default=5, type=int, required=False)                  
 parser.add_argument('-csep', help='class separation.', default=0.1, type=float, required=False)        
 parser.add_argument('-dseed', help='Random seed for data generation.', default=42, type=int, required=False)
-parser.add_argument('-noise_model', help='Noise model', type=str, default="distancebased", choices=['distancebased', 'distractionbased'], required=False)
+parser.add_argument('-noise_model', help='Noise model', type=str, required=True,
+                    choices=['distancebased', 'distractionbased', "cluster1", "cluster2", "cluster3", "instancebased", "uniform"])
+parser.add_argument('-distractionbased_ratio', help='ratio of classes that are distractors for a given class.', default=1.0, type=float, required=False)        
 args = parser.parse_args()
 
 ## Output directory
@@ -160,7 +164,10 @@ elif args.ds in ['mnist', 'kmnist', 'fashion', 'cifar10', 'cifar100']:
      partial_matrix_valid_loader, valid_loader,
      partial_matrix_test_loader, test_loader,
      train_partial_Y, valid_partial_Y, test_partial_Y,
-     dim, K) = generate_cv_dataloader(dataname=args.ds, batch_size=args.bs, partial_rate=args.prt, partial_type=args.pr, cluster=args.cluster, num_groups=args.num_groups)
+     dim, K) = generate_cv_dataloader(dataname=args.ds, batch_size=args.bs, partial_rate = args.prt, partial_type=args.pr,
+                                      noise_model=args.noise_model,
+                                      num_groups=args.num_groups,
+                                      distractionbased_ratio=args.distractionbased_ratio)
     train_givenY = train_partial_Y
 
 elif args.ds in ['shierarchy32']:
@@ -168,7 +175,10 @@ elif args.ds in ['shierarchy32']:
      partial_matrix_valid_loader, valid_loader,
      partial_matrix_test_loader, test_loader,
      train_partial_Y, valid_partial_Y, test_partial_Y,
-     dim, K) = generate_cv_dataloader(dataname=dname, batch_size=args.bs, partial_rate=args.prt, partial_type=args.pr, cluster=args.cluster, num_groups=args.num_groups)
+     dim, K) = generate_cv_dataloader(dataname=dname, batch_size=args.bs, partial_rate = args.prt, partial_type=args.pr,
+                                      noise_model=args.noise_model,
+                                      num_groups=args.num_groups,
+                                      distractionbased_ratio=args.distractionbased_ratio)
     train_givenY = train_partial_Y
         
 elif args.ds.startswith('synthetic'):
@@ -176,7 +186,7 @@ elif args.ds.startswith('synthetic'):
      partial_matrix_valid_loader, valid_loader,
      partial_matrix_test_loader, test_loader,
      train_partial_Y, valid_partial_Y, test_partial_Y,
-     dim, K) = generate_synthetic_hypercube_dataloader(args.prt, args.bs, args.dseed, num_classes=args.nc, num_samples=args.ns, feature_dim=args.nf, class_sep=args.csep, noise_model=args.noise_model)
+     dim, K) = generate_synthetic_hypercube_dataloader(args.prt, args.bs, args.dseed, num_classes=args.nc, num_samples=args.ns, feature_dim=args.nf, class_sep=args.csep, noise_model=args.noise_model, distractionbased_ratio=args.distractionbased_ratio)
     train_givenY = train_partial_Y
     train_givenY = torch.tensor(train_givenY)
 
@@ -202,9 +212,9 @@ elif args.lo == 'hprp':
 elif args.lo == 'll':
     loss_fn = ll_loss()
 elif args.lo == 'bi_prp':
-    loss_fn = bi_prp_loss()
+    loss_fn = bi_prp_loss(from_logits=True, logit_decay=args.logit_decay)
 elif args.lo == 'bi_prp2':
-    loss_fn = bi_prp2_loss()
+    loss_fn = bi_prp_loss(from_logits=False, logit_decay=args.logit_decay)
 elif args.lo == 'bi_prp_nll':
     loss_fn = bi_prp_nll_loss()
 elif args.lo == 'nll':
@@ -288,6 +298,13 @@ for epoch in range(args.ep):
             average_loss = loss_fn(outputs, Y.float())
 
         average_loss.backward()
+
+        # for layer in model.parameters():
+        #     print("Gradients: ", torch.sqrt(torch.square(layer.grad).sum()))
+
+        if args.clip is not None:
+            torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
+        
         optimizer.step()
         if args.lo == 'rc':
             confidence = confidence_update(model, confidence, X, Y, index)

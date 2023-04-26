@@ -18,6 +18,10 @@ metric_map={
     "Test Accuracy": "Best Test Accuracy:  (\d+\.\d*)",
 }
 
+namemap={
+    "democracy":"uniform",
+}
+
 is_float = {
     "prt": True,
     "bs": True,
@@ -31,18 +35,34 @@ is_float = {
     "pr": False,
     "seed": True,
     "dseed": True,
+    "distractionbased_ratio": True,
+    "logit_decay": True,
+    "case": False,
 }
 
 def pr_map(pr):
+    result = {}
+    
     huniform_match = re.match("h([0-9]*)uniform_(.*)", pr)
     uniform_match = re.match("uniform_(.*)", pr)
 
-    if huniform_match:
-        prt = float(huniform_match.groups()[1])
-        num_groups = float(huniform_match.groups()[0])
-        return prt, num_groups
+    if pr == "01":
+        result["case"] = "Case 1"
+    elif pr == "02":
+        result["case"] = "Case 2"
+    elif pr == "04":
+        result["case"] = "Case 3"
+    elif pr == "03":
+        result["case"] = "Case 4"
+    elif pr == "10":
+        result["case"] = "Case 5"
+    elif huniform_match:
+        result["prt"] = float(huniform_match.groups()[1])
+        result["num_groups"] = float(huniform_match.groups()[0])
+    else:
+        assert False, "Unhandled pr value: " + pr
 
-    # TODO otherp pr values
+    return result
 
 
 color_map = {
@@ -59,7 +79,7 @@ color_map = {
     "ll":"lime",
     }
 
-def plot(directory, series, x_axis, outdir, metrics, filtermap={}, prefix=""):
+def plot(directory, series, x_axis, outdir, metrics, filtermap={}, prefix="", title="", xlabel=""):
     result = {}
     for m in metrics:
         result[m] = {}
@@ -75,16 +95,22 @@ def plot(directory, series, x_axis, outdir, metrics, filtermap={}, prefix=""):
                 value = args[i+1].rstrip('_')
                 
                 argdict[key] = value
-                if key in filtermap and argdict[key] != filtermap[key]:
+                if key in filtermap and argdict[key] not in filtermap[key]:
                     skipfile=True
                 if key == "pr":
-                    prt, num_groups = pr_map(value)
-                    argdict["prt"] = prt
-                    argdict["num_groups"] = num_groups
-                    if "prt" in filtermap and prt != float(filtermap["prt"]):
-                        skipfile=True
-                    if "num_groups" in filtermap and num_groups != float(filtermap["num_groups"]):
-                        skipfile=True
+                    pr_dict = pr_map(value)
+                    for k in pr_dict:
+                        argdict[k] = pr_dict[k]
+                        if k in filtermap and k not in filtermap[k]:
+                            skipfile=True
+                            
+                    # prt, num_groups = pr_map(value)
+                    # argdict["prt"] = prt
+                    # argdict["num_groups"] = num_groups
+                    # if "prt" in filtermap and prt not in float(filtermap["prt"]):
+                    #     skipfile=True
+                    # if "num_groups" in filtermap and num_groups not in float(filtermap["num_groups"]):
+                    #     skipfile=True
                     
             if skipfile:
                 continue
@@ -112,10 +138,17 @@ def plot(directory, series, x_axis, outdir, metrics, filtermap={}, prefix=""):
 
 
     # create plot
-    fig, axs = plt.subplots(3, math.ceil(len(metrics)/3), figsize=(20, 20))
+    size = math.ceil(len(metrics)/3) * 10
+    if len(metrics) >= 3:
+        fig, axs = plt.subplots(3, math.ceil(len(metrics)/3), figsize=(size, size))
+    else:
+        fig, axs = plt.subplots(1, len(metrics), figsize=(size, size))
     for i, m in enumerate(metrics):
         for s in result[m].keys():
-            color = color_map[s]
+            if series == "lo":
+                color = color_map[s]
+            else:
+                color = None
             xs = result[m][s].keys()
             ys = result[m][s].values()
             sorted_pairs = sorted(zip(xs, ys))
@@ -129,15 +162,30 @@ def plot(directory, series, x_axis, outdir, metrics, filtermap={}, prefix=""):
             ys_med = [round(median(y),2) if len(y) > 0 else 0.0 for y in ys]
         
             print("   ", s, xs, ys_max, ys_med, color)
-            
-            axs[i%3, i//3].plot(xs, ys_med, color=color, label=s+"-median", marker='o')
-            axs[i%3, i//3].plot(xs, ys_max, color=color, label=s+"-max", marker='o', linestyle='dashed')
+            if s in namemap:
+                s = namemap[s]
+
+            if len(metrics) == 1:
+                axis = axs
+            elif len(metrics) <= 3:
+                axis = axs[i]
+            else:
+                axis= axs[i%3, i//3]
+
+            if color is None:
+                axis.plot(xs, ys_med, label=s+"-median", marker='o')
+                axis.plot(xs, ys_max, label=s+"-max", marker='o', linestyle='dashed')
+            else:
+                axis.plot(xs, ys_med, color=color, label=s+"-median", marker='o')
+                axis.plot(xs, ys_max, color=color, label=s+"-max", marker='o', linestyle='dashed')
             # axs[i%3, i//3].errorbar(xs, ys_mean, yerr=ys_errors, color=color, elinewidth=3, label=s, marker='o')
-            axs[i%3, i//3].set_title(m)
-            axs[i%3, i//3].title.set_fontsize(48)
-            axs[i%3, i//3].xaxis.label.set_fontsize(28)
-            axs[i%3, i//3].yaxis.label.set_fontsize(28)
-            axs[i%3, i//3].legend()
+            axis.set_title(title)
+            axis.title.set_fontsize(28)
+            axis.set_xlabel(xlabel)
+            axis.set_ylabel(m)
+            axis.xaxis.label.set_fontsize(28)
+            axis.yaxis.label.set_fontsize(28)
+            axis.legend()
     
     outfile = "{}/plot_{}{}_{}.png".format(outdir, prefix, series, x_axis)
     os.makedirs(outdir, exist_ok=True)
@@ -152,7 +200,7 @@ def exp14():
     outdir="plots/zs14_cifar100_groups"
     for prt in ["0.9", "0.8", "0.7", "0.6", "0.5", "0.4", "0.3", "0.2", "0.1", "0.0"]:        
         filtermap = {
-            "prt":prt,
+            "prt":[prt],
         }
         for x_axis in x_axes:
             plot(directory, series, x_axis, outdir, metrics, filtermap, prefix="prt-{}_".format(prt))
@@ -160,7 +208,7 @@ def exp14():
     x_axes = ["prt"]
     for num_groups in ["1", "2", "4", "5", "10", "20"]:        
         filtermap = {
-            "num_groups":num_groups,
+            "num_groups":[num_groups],
         }
         for x_axis in x_axes:
             plot(directory, series, x_axis, outdir, metrics, filtermap, prefix="groups-{}_".format(num_groups))
@@ -190,7 +238,7 @@ def exp17():
     x_axes = ["num_groups"]
     for prt in ["0.9", "0.8", "0.7", "0.6", "0.5", "0.4", "0.3", "0.2", "0.1", "0.0"]:        
         filtermap = {
-            "prt":prt,
+            "prt":[prt],
         }
         for x_axis in x_axes:
             plot(directory, series, x_axis, outdir, metrics, filtermap, prefix="prt-{}_".format(prt))
@@ -198,7 +246,7 @@ def exp17():
     x_axes = ["prt"]
     for num_groups in ["1", "2", "4", "5", "10", "20"]:        
         filtermap = {
-            "num_groups":num_groups,
+            "num_groups":[num_groups],
         }
         for x_axis in x_axes:
             plot(directory, series, x_axis, outdir, metrics, filtermap, prefix="groups-{}_".format(num_groups))
@@ -210,7 +258,7 @@ def exp18():
     outdir="plots/zs18_cifar100_adam"
     for prt in ["0.9", "0.8", "0.7", "0.6", "0.5", "0.4", "0.3", "0.2", "0.1", "0.0"]:        
         filtermap = {
-            "prt":prt,
+            "prt":[prt],
         }
         for x_axis in x_axes:
             plot(directory, series, x_axis, outdir, metrics, filtermap, prefix="prt-{}_".format(prt))
@@ -222,7 +270,7 @@ def exp19():
     outdir="plots/zs19_cifar100_resnet18"
     for prt in ["0.0", "0.05", "0.1", "0.3", "0.6"]:        
         filtermap = {
-            "prt":prt,
+            "prt":[prt],
         }
         for x_axis in x_axes:
             plot(directory, series, x_axis, outdir, metrics, filtermap, prefix="prt-{}_".format(prt))
@@ -242,7 +290,7 @@ def exp21():
     outdir="plots/zs21_shierarchy32"
     for prt in ["0.9", "0.7", "0.5", "0.3", "0.2", "0.1", "0.0"]:        
         filtermap = {
-            "prt":prt,
+            "prt":[prt],
         }
         for x_axis in x_axes:
             plot(directory, series, x_axis, outdir, metrics, filtermap, prefix="prt-{}_".format(prt))
@@ -253,7 +301,7 @@ def exp21():
     outdir="plots/zs21_shierarchy32"
     for num_groups in ["1", "2", "4", "8", "16", "32"]:        
         filtermap = {
-            "num_groups":num_groups,
+            "num_groups":[num_groups],
         }
         for x_axis in x_axes:
             plot(directory, series, x_axis, outdir, metrics, filtermap, prefix="groups-{}_".format(num_groups))
@@ -266,7 +314,7 @@ def exp22():
     outdir="plots/zs22_shierarchy32"
     prt="0.2"    
     filtermap = {
-        "prt":prt,
+        "prt":[prt],
     }
     for x_axis in x_axes:
         plot(directory, series, x_axis, outdir, metrics, filtermap, prefix="prt-{}_".format(prt))
@@ -278,17 +326,15 @@ def exp23():
     outdir="plots/zs23_cifar100"
     for prt in ["0.9", "0.6", "0.3", "0.0"]:        
         filtermap = {
-            "prt":prt,
+            "prt":[prt],
         }
         for x_axis in x_axes:
             plot(directory, series, x_axis, outdir, metrics, filtermap, prefix="prt-{}_".format(prt))
         
-    filtermap = {
-    }
     x_axes = ["prt"]
     for num_groups in ["1", "2", "4", "5", "10", "20"]:        
         filtermap = {
-            "num_groups":num_groups,
+            "num_groups":[num_groups],
         }
         for x_axis in x_axes:
             plot(directory, series, x_axis, outdir, metrics, filtermap, prefix="groups-{}_".format(num_groups))
@@ -301,7 +347,7 @@ def exp24():
 
     for prt in ["0.2", "0.1", "0.05"]:        
         filtermap = {
-            "prt":prt,
+            "prt":[prt],
         }
         for x_axis in x_axes:
             plot(directory, series, x_axis, outdir, metrics, filtermap, prefix="prt-{}_".format(prt))
@@ -309,7 +355,7 @@ def exp24():
     x_axes = ["prt"]
     for num_groups in ["1", "2", "4", "5", "10", "20", "50"]:        
         filtermap = {
-            "num_groups":num_groups,
+            "num_groups":[num_groups],
         }
         for x_axis in x_axes:
             plot(directory, series, x_axis, outdir, metrics, filtermap, prefix="groups-{}_".format(num_groups))
@@ -319,7 +365,7 @@ def exp25():
     series = "lo"
     outdir="plots/zs25_synthetic_distractionbased"
     filtermap = {
-        "lr":"0.001",
+        "lr":["0.001"],
     }
     x_axes = ["prt", "lr", "seed", "dseed"]
     for x_axis in x_axes:
@@ -334,7 +380,96 @@ def exp26():
     for x_axis in x_axes:
         plot(directory, series, x_axis, outdir, metrics)
 
-        
-exp26()
+def exp27():
+    directory = "out/zs27"
+    series = "lo"
+    outdir="plots/zs27_synthetic_distractionbased"
+    metrics=["Test Accuracy"]
+    x_axes = ["distractionbased_ratio"]
+    for prt in ["0.9", "0.8", "0.7", "0.6", "0.5", "0.3", "0.2", "0.1", "0.05"]:        
+        filtermap = {
+            "lo": ["prp", "nll", "lws", "rc", "democracy"],
+            "distractionbased_ratio": ['0.9', '0.8', '0.7', '0.6', '0.5', '0.4', '0.3', '0.2', '0.1'],
+            "prt":[prt],
+        }
+        title = "p-rate = {}".format(prt)
+        xlabel = "s-rate"
+        for x_axis in x_axes:
+            plot(directory, series, x_axis, outdir, metrics, filtermap, prefix="prt-{}_".format(prt), title=title, xlabel=xlabel)
 
+def exp28():
+    directory = "out/zs28"
+    series = "lo"
+    outdir="plots/zs28_biprp"
+    x_axes = ["logit_decay"]
+    for x_axis in x_axes:
+        plot(directory, series, x_axis, outdir, metrics)
 
+def exp29():
+    directory = "out/zs29"
+    series = "lo"
+    outdir="plots/zs29_synthetic_distractionbased"
+    metrics=["Test Accuracy"]
+    x_axes = ["distractionbased_ratio"]
+    for prt in ["0.9", "0.8", "0.7", "0.6", "0.5", "0.3", "0.2", "0.1", "0.05"]:        
+        filtermap = {
+            "lo": ["prp", "nll", "lws", "rc", "democracy", "bi_prp"],
+            "distractionbased_ratio": ['0.9', '0.8', '0.7', '0.6', '0.5', '0.4', '0.3', '0.2', '0.1'],
+            "prt":[prt],
+        }
+        title = "p-rate = {}".format(prt)
+        xlabel = "s-rate"
+        for x_axis in x_axes:
+            plot(directory, series, x_axis, outdir, metrics, filtermap, prefix="prt-{}_".format(prt), title=title, xlabel=xlabel)
+
+    x_axes = ["prt"]
+    for distractionbased_ratio in ["0.1", "0.3", "0.5", "0.7", "0.9"]:        
+        filtermap = {
+            "lo": ["prp", "nll", "lws", "rc", "democracy", "bi_prp"],
+            "distractionbased_ratio":[distractionbased_ratio],
+        }
+        title = "s-rate = {}".format(distractionbased_ratio)
+        xlabel = "p-rate"
+        for x_axis in x_axes:
+            plot(directory, series, x_axis, outdir, metrics, filtermap, prefix="dist-{}_".format(distractionbased_ratio), title=title, xlabel=xlabel)
+
+def exp30():
+    directory = "out/zs30"
+    series = "lo"
+    outdir="plots/zs30_cifar100"
+    metrics=["Test Accuracy"]
+    x_axes = ["distractionbased_ratio"]
+    for prt in ["0.9", "0.7", "0.5", "0.3", "0.1"]:        
+        filtermap = {
+            "lo": ["prp", "nll", "lws", "rc", "democracy", "bi_prp"],
+            "distractionbased_ratio": ['0.9', '0.7', '0.5', '0.3', '0.1'],
+            "prt":[prt],
+        }
+        title = "p-rate = {}".format(prt)
+        xlabel = "s-rate"
+        for x_axis in x_axes:
+            plot(directory, series, x_axis, outdir, metrics, filtermap, prefix="prt-{}_".format(prt), title=title, xlabel=xlabel)
+
+    x_axes = ["prt"]
+    for distractionbased_ratio in ["0.1", "0.3", "0.5", "0.7", "0.9"]:        
+        filtermap = {
+            "lo": ["prp", "nll", "lws", "rc", "democracy", "bi_prp"],
+            "distractionbased_ratio":[distractionbased_ratio],
+        }
+        title = "s-rate = {}".format(distractionbased_ratio)
+        xlabel = "p-rate"
+        for x_axis in x_axes:
+            plot(directory, series, x_axis, outdir, metrics, filtermap, prefix="dist-{}_".format(distractionbased_ratio), title=title, xlabel=xlabel)
+
+def exp31():
+    directory = "out/zs31"
+    series = "lo"
+    outdir="plots/zs31_cifar10"
+    metrics=["Test Accuracy"]
+    x_axes = ["case"]
+    xlabel = "Data Generation Case"
+    title = "Cifar10"
+    for x_axis in x_axes:
+        plot(directory, series, x_axis, outdir, metrics, xlabel=xlabel, title=title)
+            
+exp31()
