@@ -125,6 +125,8 @@ if not os.path.exists(save_dir):
 ## Dataset name
 if args.ds.startswith('synthetic'):
     dname = f'synthetic_{args.ns}_{args.nc}_{args.nf}_{args.prt}_{args.csep}_{args.noise_model}_{args.dseed}'
+elif args.ds.startswith('shierarchy'):
+    dname = f'{args.ds}-{args.csep}-{args.dseed}'
 else:
     dname = args.ds
 
@@ -157,12 +159,23 @@ device = torch.device("cuda:" + args.gpu if torch.cuda.is_available() else "cpu"
 if args.ds in ['birdac', 'lost']:
     (partial_matrix_train_loader, train_loader, eval_loader, test_loader, train_partial_Y, dim, K) = generate_real_dataloader(args.ds, './data/realworld/', args.bs, 42)
 
-elif args.ds in ['mnist', 'kmnist', 'fashion', 'cifar10', 'cifar100', 'shierarchy32']:
+elif args.ds in ['mnist', 'kmnist', 'fashion', 'cifar10', 'cifar100']:
     (partial_matrix_train_loader, train_loader,
      partial_matrix_valid_loader, valid_loader,
      partial_matrix_test_loader, test_loader,
      train_partial_Y, valid_partial_Y, test_partial_Y,
      dim, K) = generate_cv_dataloader(dataname=args.ds, batch_size=args.bs, partial_rate = args.prt, partial_type=args.pr,
+                                      noise_model=args.noise_model,
+                                      num_groups=args.num_groups,
+                                      distractionbased_ratio=args.distractionbased_ratio)
+    train_givenY = train_partial_Y
+
+elif args.ds in ['shierarchy32']:
+    (partial_matrix_train_loader, train_loader,
+     partial_matrix_valid_loader, valid_loader,
+     partial_matrix_test_loader, test_loader,
+     train_partial_Y, valid_partial_Y, test_partial_Y,
+     dim, K) = generate_cv_dataloader(dataname=dname, batch_size=args.bs, partial_rate = args.prt, partial_type=args.pr,
                                       noise_model=args.noise_model,
                                       num_groups=args.num_groups,
                                       distractionbased_ratio=args.distractionbased_ratio)

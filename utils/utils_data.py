@@ -369,8 +369,13 @@ def prepare_cv_datasets(dataname, batch_size):
         test_dataset = dsets.CIFAR100(root='~/datasets/cifar100',
                                      train=False,
                                      transform=test_transform)
-    elif dataname == 'shierarchy32':
-        seed = 12
+    elif dataname.startswith('shierarchy32'):
+        dset_args = dataname.split('-')
+        dset = dset_args[0]
+        csep = float(dset_args[1])
+        seed = int(dset_args[2])
+        # seed = 12
+        # csep = 1.0
         levels = 6
         d = 120
         n = 100
@@ -379,7 +384,7 @@ def prepare_cv_datasets(dataname, batch_size):
                                                 num_samples_per_class=n,
                                                 feature_dim=d,
                                                 num_levels=levels,
-                                                class_sep=1.5
+                                                class_sep=csep #1.0, prev 1.5
                                                 )
 
     train_loader = torch.utils.data.DataLoader(dataset=ordinary_train_dataset,
@@ -404,7 +409,7 @@ def prepare_cv_datasets(dataname, batch_size):
     
     if dataname == 'cifar100':
         num_classes = 100
-    elif dataname == 'shierarchy32':
+    elif dataname.startswith('shierarchy32'):
         num_classes = 32
     else:
         num_classes = 10
@@ -710,7 +715,7 @@ def generate_instance_based_candidate_labels(data, true_labels, partial_rate, da
         different_coarse_label = np.expand_dims(coarse_labels,0) != np.expand_dims(coarse_labels,1)
         for i in range(n):
             prob_matrix[i, different_coarse_label[true_labels[i]]] = 0
-    elif dataname == "shierarchy32":
+    elif dataname.startswith('shierarchy32'):
         labels = np.arange(K)
         coarse_labels = shierarchy32_sparse2coarse(labels, num_groups)
         different_coarse_label = np.expand_dims(coarse_labels,0) != np.expand_dims(coarse_labels,1)
