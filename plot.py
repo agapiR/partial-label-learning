@@ -79,7 +79,7 @@ color_map = {
     "ll":"lime",
     }
 
-def plot(directory, series, x_axis, outdir, metrics, filtermap={}, prefix="", title="", xlabel=""):
+def plot(directory, series, x_axis, outdir, metrics, filtermap={}, prefix="", title="", xlabel="",show_max=True):
     result = {}
     for m in metrics:
         result[m] = {}
@@ -172,12 +172,13 @@ def plot(directory, series, x_axis, outdir, metrics, filtermap={}, prefix="", ti
             else:
                 axis= axs[i%3, i//3]
 
-            if color is None:
-                axis.plot(xs, ys_med, label=s+"-median", marker='o')
-                axis.plot(xs, ys_max, label=s+"-max", marker='o', linestyle='dashed')
-            else:
+            if show_max:
                 axis.plot(xs, ys_med, color=color, label=s+"-median", marker='o')
                 axis.plot(xs, ys_max, color=color, label=s+"-max", marker='o', linestyle='dashed')
+            else:
+                axis.plot(xs, ys_med, color=color, label=s, marker='o')
+                
+                
             # axs[i%3, i//3].errorbar(xs, ys_mean, yerr=ys_errors, color=color, elinewidth=3, label=s, marker='o')
             axis.set_title(title)
             axis.title.set_fontsize(28)
@@ -459,7 +460,7 @@ def exp30():
         title = "s-rate = {}".format(distractionbased_ratio)
         xlabel = "p-rate"
         for x_axis in x_axes:
-            plot(directory, series, x_axis, outdir, metrics, filtermap, prefix="dist-{}_".format(distractionbased_ratio), title=title, xlabel=xlabel)
+            plot(directory, series, x_axis, outdir, metrics, filtermap, prefix="dist-{}_".format(distractionbased_ratio), title=title, xlabel=xlabel, show_max=False)
 
 def exp31():
     directory = "out/zs31"
@@ -467,9 +468,9 @@ def exp31():
     outdir="plots/zs31_cifar10"
     metrics=["Test Accuracy"]
     x_axes = ["case"]
-    xlabel = "Data Generation Case"
-    title = "Cifar10"
+    xlabel = "Noise Model"
+    title = "Cifar10 with various noise models"
     for x_axis in x_axes:
-        plot(directory, series, x_axis, outdir, metrics, xlabel=xlabel, title=title)
+        plot(directory, series, x_axis, outdir, metrics, xlabel=xlabel, title=title, show_max=False)
             
 exp31()
