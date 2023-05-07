@@ -79,7 +79,7 @@ color_map = {
     "ll":"lime",
     }
 
-def plot(directory, series, x_axis, outdir, metrics, filtermap={}, prefix="", title="", xlabel="",show_max=True):
+def plot(directory, series, x_axis, outdir, metrics, filtermap={}, prefix="", title="", xlabel="",show_max=True, return_metrics=False):
     result = {}
     for m in metrics:
         result[m] = {}
@@ -192,6 +192,9 @@ def plot(directory, series, x_axis, outdir, metrics, filtermap={}, prefix="", ti
     os.makedirs(outdir, exist_ok=True)
     plt.savefig(outfile)
     # plt.clf()
+
+    if return_metrics:
+        return result
 
 
 def exp14():
@@ -483,5 +486,33 @@ def exp31():
     title = "Cifar10 with various noise models"
     for x_axis in x_axes:
         plot(directory, series, x_axis, outdir, metrics, xlabel=xlabel, title=title, show_max=False)
+
+
+def exp32():
+    directory = "out/zs32"
+    series = "lo"
+    outdir="plots/zs32"
+    metrics=["Test Accuracy", "Test Prob PLL"]
+    x_axes = ["mo"]
+    xlabel = "Classification Model"
+    result = {}
+    for ds in ['birdac', 'lost', 'MSRCv2']:        
+        filtermap = {
+            "lo": ['bi_prp', "prp", 'nll', 'lws', 'rc', 'democracy'],
+            "ds":[ds],
+        }
+        # title = "{} - with various models".format(ds)
+        result[ds] = plot(directory, series, x_axes[0], outdir, metrics, filtermap, prefix="dataset-{}_".format(ds), title="", xlabel=xlabel, return_metrics=True)
+
+    for ds, mo in [('birdac', 'mlp'), ('lost', 'linear'), ('MSRCv2', 'mlp')]:    
+        res = result[ds]
+        print("-- Dataset {}".format(ds))
+        for metric in ["Test Accuracy"]:
+            loss_funs = res[metric].keys()
+            for lo in loss_funs:
+                # models = res[metric][lo].keys()
+                # for mo in ["mlp"]:
+                print("{} - loss {} - model {}: {} +/- {} %".format(metric, lo, mo, np.around(100*np.mean(res[metric][lo][mo]),2), np.around(100*np.std(res[metric][lo][mo]),2)))
+
             
-exp22()
+exp32()

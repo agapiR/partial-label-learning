@@ -68,6 +68,9 @@ class RealIdxDataset(Dataset):
 
 
 def generate_real_dataloader(dataname, datadir, batch_size, seed):
+
+    print("Loading Dataset {} - Random state is {}".format(dataname, seed))
+
     datapath = os.path.join(datadir, "{}.mat".format(dataname))
     dt = loadmat(datapath)
 
@@ -79,8 +82,6 @@ def generate_real_dataloader(dataname, datadir, batch_size, seed):
     partial_y = np.float32(partial_y)
     y = np.float32(np.argmax(y, axis=1))
     
-
-    print("random_state is {}".format(seed))
     train_X, test_X, train_y, test_y, train_partial_y, test_partial_y = train_test_split(X,
                                                                                         y,
                                                                                         partial_y,
@@ -101,8 +102,13 @@ def generate_real_dataloader(dataname, datadir, batch_size, seed):
     valid_X = scaler.transform(valid_X)
     test_X = scaler.transform(test_X)
 
-    print(train_X.shape[0], valid_X.shape[0], test_X.shape[0])
-
+    # Train datasets: Partial and Ordinary
+    train_dataset = gen_index_dataset(train_X, train_partial_y, train_y)
+    train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
+                                               batch_size=batch_size,
+                                               shuffle=True,
+                                               drop_last=True,
+                                               num_workers=0)
     ordinary_train_dataset = RealDataset(train_X, train_y)
     train_eval_loader = torch.utils.data.DataLoader(
         dataset=ordinary_train_dataset,
@@ -110,14 +116,13 @@ def generate_real_dataloader(dataname, datadir, batch_size, seed):
         shuffle=False,
         num_workers=0)
 
-    # train_dataset = RealIdxDataset(train_X, train_partial_y)
-    train_dataset = gen_index_dataset(train_X, train_partial_y, train_y)
-    train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
+    # Validation datasets: Partial and Ordinary
+    valid_dataset = gen_index_dataset(valid_X, valid_partial_y, valid_y)
+    valid_loader = torch.utils.data.DataLoader(dataset=valid_dataset,
                                                batch_size=batch_size,
                                                shuffle=True,
                                                drop_last=True,
                                                num_workers=0)
-
     ordinary_valid_dataset = RealDataset(valid_X, valid_y)
     valid_eval_loader = torch.utils.data.DataLoader(
         dataset=ordinary_valid_dataset,
@@ -125,6 +130,13 @@ def generate_real_dataloader(dataname, datadir, batch_size, seed):
         shuffle=False,
         num_workers=0)
 
+    # Test datasets: Partial and Ordinary
+    test_dataset = gen_index_dataset(test_X, test_partial_y, test_y)
+    test_loader = torch.utils.data.DataLoader(dataset=test_dataset,
+                                               batch_size=batch_size,
+                                               shuffle=True,
+                                               drop_last=True,
+                                               num_workers=0)
     ordinary_test_dataset = RealDataset(test_X, test_y)
     test_eval_loader = torch.utils.data.DataLoader(
         dataset=ordinary_test_dataset,
@@ -135,8 +147,11 @@ def generate_real_dataloader(dataname, datadir, batch_size, seed):
     num_features = X.shape[1]
     num_classes = partial_y.shape[1]
 
-    return (train_loader, train_eval_loader, valid_eval_loader,
-            test_eval_loader, train_partial_y, num_features, num_classes)
+    return (train_loader, train_eval_loader, 
+            valid_loader, valid_eval_loader,
+            test_loader, test_eval_loader, 
+            torch.FloatTensor(train_partial_y), torch.FloatTensor(valid_partial_y), torch.FloatTensor(test_partial_y), 
+            num_features, num_classes)
 
 
 

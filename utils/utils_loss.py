@@ -111,7 +111,7 @@ class log_prp_Loss(torch.nn.Module):
             loss = coefficient.detach() * loss
 
 
-        print("logits:", inputs.mean(dim=0)[0].numpy(force=True))
+        # print("logits:", inputs.mean(dim=0)[0].numpy(force=True))
         loss = torch.mean(loss)
         
         return loss

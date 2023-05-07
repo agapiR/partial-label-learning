@@ -113,7 +113,7 @@ parser.add_argument('-nf', help='number of features.', default=5, type=int, requ
 parser.add_argument('-csep', help='class separation.', default=0.1, type=float, required=False)        
 parser.add_argument('-dseed', help='Random seed for data generation.', default=42, type=int, required=False)
 parser.add_argument('-noise_model', help='Noise model', type=str, required=True,
-                    choices=['distancebased', 'distractionbased', "cluster1", "cluster2", "cluster3", "instancebased", "uniform"])
+                    choices=['distancebased', 'distractionbased', "cluster1", "cluster2", "cluster3", "instancebased", "uniform", "real"])
 parser.add_argument('-distractionbased_ratio', help='ratio of classes that are distractors for a given class.', default=1.0, type=float, required=False)        
 args = parser.parse_args()
 
@@ -156,8 +156,14 @@ torch.cuda.manual_seed_all(args.seed)
 
 device = torch.device("cuda:" + args.gpu if torch.cuda.is_available() else "cpu")
 
-if args.ds in ['birdac', 'lost']:
-    (partial_matrix_train_loader, train_loader, eval_loader, test_loader, train_partial_Y, dim, K) = generate_real_dataloader(args.ds, './data/realworld/', args.bs, 42)
+if args.ds in ['birdac', 'lost', 'MSRCv2', 'LYN', 'spd']:
+    # (partial_matrix_train_loader, train_loader, eval_loader, test_loader, train_partial_Y, dim, K) = generate_real_dataloader(args.ds, './data/realworld/', args.bs, 42)
+    (partial_matrix_train_loader, train_loader,
+     partial_matrix_valid_loader, valid_loader,
+     partial_matrix_test_loader, test_loader,
+     train_partial_Y, valid_partial_Y, test_partial_Y,
+     dim, K) = generate_real_dataloader(args.ds, './data/realworld/', args.bs, args.dseed)
+    train_givenY = train_partial_Y
 
 elif args.ds in ['mnist', 'kmnist', 'fashion', 'cifar10', 'cifar100']:
     (partial_matrix_train_loader, train_loader,
@@ -191,6 +197,8 @@ elif args.ds.startswith('synthetic'):
     train_givenY = torch.tensor(train_givenY)
 
 if args.lo == 'rc':
+    print(train_givenY.shape)
+    print(train_givenY.type)
     tempY = train_givenY.sum(dim=1).unsqueeze(1).repeat(
         1, train_givenY.shape[1])
     confidence = train_givenY.float() / tempY
