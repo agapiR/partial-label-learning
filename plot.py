@@ -89,6 +89,20 @@ name_map = {
     "ll":r'll',
     }
 
+marker_map = {
+    "prp": 'o',
+    "prp_basic": 'o',
+    "bi_prp": 'v',
+    "bi_prp2": 'v',
+    "nll": 's',
+    "cc": 's',
+    "lws": 'p',
+    "democracy": '1',
+    "rc":'P',
+    "bi_prp_nll":'v',
+    "ll":'x',
+    }
+
 def order_keys(keys):
     ranking = {
         "prp": 1,
@@ -177,9 +191,11 @@ def plot(directory, series, x_axis, outdir, metrics, filtermap={}, prefix="", ti
             if series == "lo":
                 color = color_map[s]
                 label = name_map[s]
+                marker = marker_map[s]
             else:
                 color = None
                 label = s
+                marker='o'
             xs = result[m][s].keys()
             ys = result[m][s].values()
             sorted_pairs = sorted(zip(xs, ys))
@@ -205,7 +221,8 @@ def plot(directory, series, x_axis, outdir, metrics, filtermap={}, prefix="", ti
                 axis.plot(xs, ys_med, color=color, label=label+"-median", marker='o')
                 axis.plot(xs, ys_max, color=color, label=label+"-max", marker='o', linestyle='dashed')
             else:
-                axis.plot(xs, ys_mean, color=color, label=label, marker='o')
+                print(label)
+                axis.plot(xs, ys_mean, color=color, label=label, marker=marker)
                 
                 
             # axs[i%3, i//3].errorbar(xs, ys_mean, yerr=ys_errors, color=color, elinewidth=3, label=s, marker='o')
@@ -465,7 +482,7 @@ def exp29():
     #         plot(directory, series, x_axis, outdir, metrics, filtermap, prefix="prt-{}_".format(prt), title=title, xlabel=xlabel)
 
     x_axes = ["prt"]
-    for distractionbased_ratio in ["0.1", "0.5", "0.9"]:        
+    for distractionbased_ratio in ["0.1", "0.3", "0.5", "0.7", "0.9"]:        
         filtermap = {
             "lo": ["prp", "nll", "lws", "rc", "democracy", "bi_prp"],
             "distractionbased_ratio":[distractionbased_ratio],
