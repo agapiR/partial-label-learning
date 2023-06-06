@@ -235,7 +235,7 @@ def plot(directory, series, x_axis, outdir, metrics, filtermap={}, prefix="", ti
         axis.legend(prop={'size': 20})
         axis.grid(color='grey', linestyle='-', linewidth=0.3)
     
-    outfile = "{}/plot_{}{}_{}.png".format(outdir, prefix, series, x_axis)
+    outfile = "{}/plot_{}{}_{}.pdf".format(outdir, prefix, series, x_axis)
     os.makedirs(outdir, exist_ok=True)
     plt.savefig(outfile)
     # plt.clf()
@@ -531,4 +531,6 @@ def exp31():
     for x_axis in x_axes:
         plot(directory, series, x_axis, outdir, metrics, xlabel=xlabel, title=title, show_max=False)
             
+exp29()
+exp30()
 exp31()

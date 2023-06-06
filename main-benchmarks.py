@@ -243,6 +243,7 @@ elif args.mo == "resnet18":
 
 model = model.to(device)
 print(model)
+print("Parameters: ", sum(p.numel() for p in model.parameters() if p.requires_grad))
 
 optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.wd, momentum=0.9)
 # optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.wd)
