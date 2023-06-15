@@ -120,7 +120,7 @@ def update(losstype, model, input, ys_list, lr=0.1):
 
     return logits2, probgrad, probs, probs2
     
-def show_vector_field(losstypes, outfile, ys_list, in_dim=5, hidden_dim=2, modeltype='linear', output_dim=3, samples=100, min_total=0.1, max_total=0.9, hidden_layers=1):
+def show_vector_field(losstypes, outfile, ys_list, in_dim=5, hidden_dim=2, modeltype='linear', output_dim=3, samples=100, min_total=0.1, max_total=0.9, hidden_layers=1, repeat=5):
 
     if output_dim > 3:
         ys_list = [np.pad(ys, (0, output_dim - 3)) for ys in ys_list]
@@ -131,7 +131,8 @@ def show_vector_field(losstypes, outfile, ys_list, in_dim=5, hidden_dim=2, model
     input = np.ones((1,in_dim))
     Y = np.array(ys_list)   # (n_batch * n_outputs)
 
-    fig, axs = plt.subplots(len(losstypes), 1, figsize=(13*len(losstypes), 13))
+    # fig, axs = plt.subplots(len(losstypes), 1, figsize=(13*len(losstypes), 13))
+    fig, axs = plt.subplots(len(losstypes), 1, figsize=(10*len(losstypes), 10))
 
     for i, losstype in enumerate(losstypes):
 
@@ -162,19 +163,22 @@ def show_vector_field(losstypes, outfile, ys_list, in_dim=5, hidden_dim=2, model
 
             probgrad_all = torch.FloatTensor([0,0,0])
             for probs in probs_list:
-                logits = np.log(np.maximum(probs,1e-15))
 
-                # find model weights that correspond to the target logits
-                model, mse = regression(model, torch.FloatTensor(input), torch.FloatTensor(logits).unsqueeze(0))
-                # print("MSE: {} -> {}".format(probs, mse))
+                # adding extra loop to average results
+                for _ in range(repeat):
+                    logits = np.log(np.maximum(probs,1e-15))
 
-                _, probgrad, probs_before, probs_after = update(losstype, model, torch.FloatTensor(input), torch.FloatTensor(Y))
-                probs_before = probs_before[:3]
-                probs_after = probs_after[:3]
-                probs_before = probs_before / probs_before.sum()
-                probs_after = probs_after / probs_after.sum()
-                probgrad_all += (probs_after - probs_before)
-            probgrad_all /= len(probs_list)
+                    # find model weights that correspond to the target logits
+                    model, mse = regression(model, torch.FloatTensor(input), torch.FloatTensor(logits).unsqueeze(0))
+                    # print("MSE: {} -> {}".format(probs, mse))
+
+                    _, probgrad, probs_before, probs_after = update(losstype, model, torch.FloatTensor(input), torch.FloatTensor(Y))
+                    probs_before = probs_before[:3]
+                    probs_after = probs_after[:3]
+                    probs_before = probs_before / probs_before.sum()
+                    probs_after = probs_after / probs_after.sum()
+                    probgrad_all += (probs_after - probs_before)
+            probgrad_all /= (repeat * len(probs_list))
             # print("{} -> {} -> {} -> {}".format(x, probs, probs_before, probs_after))
             return probgrad_all
         
@@ -189,11 +193,12 @@ def show_vector_field(losstypes, outfile, ys_list, in_dim=5, hidden_dim=2, model
             a = axs[i]
             
         dynamics.plot_simplex(a)
-        a.set_title(losstype)
-        a.title.set_fontsize(30)
+        # a.set_title(losstype)
+        # a.title.set_fontsize(30)
 
     os.makedirs(os.path.dirname(outfile), exist_ok=True)
     plt.savefig(outfile)
+    plt.close()
 
 
 ys_map={
@@ -213,7 +218,7 @@ def run(config):
                                 for minmax in config["minmaxes"]:
                                     exp = config["exp"]
                                     samples = config["samples"]
-                                    outfile = "plots/vectorfields/exp{}/vectorfields_{}_{}_{}_{}_{}_{}_{}_{}.png".format(exp, label, modeltype, in_dim, hidden_dim, output_dim, minmax, loss, hidden_layer)
+                                    outfile = "plots/vectorfields/exp{}/vectorfields_{}_{}_{}_{}_{}_{}_{}_{}.pdf".format(exp, label, modeltype, in_dim, hidden_dim, output_dim, minmax, loss, hidden_layer)
                                 print("\n---------------")
                                 print(outfile)
                                 show_vector_field([loss], outfile , ys_list=ys_list,
