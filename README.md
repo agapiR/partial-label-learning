@@ -3,7 +3,6 @@
 This repository is a fork of the public repository [LW loss](https://github.com/hongwei-wen/LW-loss-for-partial-label).
 This repository is part of the [BESS project](https://sites.google.com/view/symbolicsupervision) which explores interactions between machine learning and logic. In particular, it contains all experiments related to partial label learning that appear on the paper.
 
-
 ### Command to reproduce experiments with the large consistent synthetic dataset (Section 6.2, Figure 7)
 
 `python zs29.py`
