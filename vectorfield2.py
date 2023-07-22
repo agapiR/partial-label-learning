@@ -5,6 +5,8 @@ import re
 import torch
 import torch.nn as nn
 import os
+import copy
+import time
 
 from utils.models import linear_model, mlp_model, deep_linear_model
 from utils.utils_loss import (log_prp_Loss as prp_loss, 
@@ -36,7 +38,7 @@ def regression(model, input, target_output, epochs=100, lr=0.01, weight_decay=0.
         loss.backward()
         optimizer.step()
         loss_np = loss.item()
-        if loss_np < 0.001:
+        if loss_np < 0.0001:
             break
         
     # print("Regression result: {} -> {}".format(input.detach().numpy(force=True), loss.detach().numpy(force=False)))
@@ -119,8 +121,33 @@ def update(losstype, model, input, ys_list, lr=0.1):
     # print("----------")
 
     return logits2, probgrad, probs, probs2
+
+def plot_trajectories(dynamics, f, axis, ntraj=1, nsteps=10):
+    def map_coordinates(point):
+        return dynamics.ba2xy(point)
+
+    trajectories = []
+    for i in range(ntraj):
+        points = []
+        np.random.seed(i)
+        current = np.random.rand(3)
+        current /= np.sum(current)
+        points.append(map_coordinates(current))
+        for step in range(nsteps):
+            grad = f(current, 0)
+            current += grad
+            points.append(map_coordinates(current))
+        trajectories.append(np.array(points))
+
+    for points in trajectories:
+        trajectory_x = points[:,0]
+        trajectory_y = points[:,1]
+        axis.plot(trajectory_x, trajectory_y, linewidth=0.7, color="red", marker="o", markersize=2)
     
-def show_vector_field(losstypes, outfile, ys_list, in_dim=5, hidden_dim=2, modeltype='linear', output_dim=3, samples=100, min_total=0.1, max_total=0.9, hidden_layers=1):
+    # return np.array(trajectories)
+
+
+def show_vector_field(losstypes, outfile, ys_list, in_dim=5, hidden_dim=2, modeltype='linear', output_dim=3, samples=100, min_total=0.1, max_total=0.9, hidden_layers=1, repeat=1, ntraj=0, nsteps=10):
 
     if output_dim > 3:
         ys_list = [np.pad(ys, (0, output_dim - 3)) for ys in ys_list]
@@ -131,7 +158,8 @@ def show_vector_field(losstypes, outfile, ys_list, in_dim=5, hidden_dim=2, model
     input = np.ones((1,in_dim))
     Y = np.array(ys_list)   # (n_batch * n_outputs)
 
-    fig, axs = plt.subplots(len(losstypes), 1, figsize=(13*len(losstypes), 13))
+    # fig, axs = plt.subplots(len(losstypes), 1, figsize=(13*len(losstypes), 13))
+    fig, axs = plt.subplots(len(losstypes), 1, figsize=(2.5*len(losstypes), 2.5))
 
     for i, losstype in enumerate(losstypes):
 
@@ -162,38 +190,47 @@ def show_vector_field(losstypes, outfile, ys_list, in_dim=5, hidden_dim=2, model
 
             probgrad_all = torch.FloatTensor([0,0,0])
             for probs in probs_list:
-                logits = np.log(np.maximum(probs,1e-15))
 
-                # find model weights that correspond to the target logits
-                model, mse = regression(model, torch.FloatTensor(input), torch.FloatTensor(logits).unsqueeze(0))
-                # print("MSE: {} -> {}".format(probs, mse))
+                # adding extra loop to average results
+                for _ in range(repeat):
+                    logits = np.log(np.maximum(probs,1e-15))
 
-                _, probgrad, probs_before, probs_after = update(losstype, model, torch.FloatTensor(input), torch.FloatTensor(Y))
-                probs_before = probs_before[:3]
-                probs_after = probs_after[:3]
-                probs_before = probs_before / probs_before.sum()
-                probs_after = probs_after / probs_after.sum()
-                probgrad_all += (probs_after - probs_before)
-            probgrad_all /= len(probs_list)
+                    # find model weights that correspond to the target logits
+                    model2, mse = regression(copy.deepcopy(model), torch.FloatTensor(input), torch.FloatTensor(logits).unsqueeze(0))
+                    # print("MSE: {} -> {}".format(probs, mse))
+
+                    _, probgrad, probs_before, probs_after = update(losstype, model2, torch.FloatTensor(input), torch.FloatTensor(Y))
+                    probs_before = probs_before[:3]
+                    probs_after = probs_after[:3]
+                    probs_before = probs_before / probs_before.sum()
+                    probs_after = probs_after / probs_after.sum()
+                    probgrad_all += (probs_after - probs_before)
+            probgrad_all /= (repeat * len(probs_list))
             # print("{} -> {} -> {} -> {}".format(x, probs, probs_before, probs_after))
+            probgrad_all = probgrad_all.detach().cpu().numpy()
             return probgrad_all
-        
-        #initialize simplex_dynamics object with function
-        dynamics=egtsimplex.simplex_dynamics(f)
-
-        #plot the simplex dynamics
 
         if len(losstypes) == 1:
-            a = axs
+            axis = axs
         else:
-            a = axs[i]
-            
-        dynamics.plot_simplex(a)
-        a.set_title(losstype)
-        a.title.set_fontsize(30)
+            axis = axs[i]
+
+
+        #initialize simplex_dynamics object with function
+        dynamics=egtsimplex.simplex_dynamics(f)
+        # print(dynamics.fixpoints)
+
+        plot_trajectories(dynamics, f, axis, ntraj=ntraj, nsteps=nsteps)
+        
+        #plot the simplex dynamics        
+        dynamics.plot_simplex(fig,axis)
+        # a.set_title(losstype)
+        # a.title.set_fontsize(30)
+        fig.tight_layout()
 
     os.makedirs(os.path.dirname(outfile), exist_ok=True)
     plt.savefig(outfile)
+    plt.close()
 
 
 ys_map={
@@ -213,13 +250,19 @@ def run(config):
                                 for minmax in config["minmaxes"]:
                                     exp = config["exp"]
                                     samples = config["samples"]
-                                    outfile = "plots/vectorfields/exp{}/vectorfields_{}_{}_{}_{}_{}_{}_{}_{}.png".format(exp, label, modeltype, in_dim, hidden_dim, output_dim, minmax, loss, hidden_layer)
+                                    outfile = "plots/vectorfields/exp{}/vectorfields_{}_{}_{}_{}_{}_{}_{}_{}.pdf".format(exp, label, modeltype, in_dim, hidden_dim, output_dim, minmax, loss, hidden_layer)
                                 print("\n---------------")
                                 print(outfile)
+                                T0 = time.time()
                                 show_vector_field([loss], outfile , ys_list=ys_list,
                                                   in_dim=in_dim, hidden_dim=hidden_dim,
                                                   modeltype=modeltype, output_dim=output_dim,
-                                                  samples=samples, min_total=minmax, max_total=minmax, hidden_layers=hidden_layer)
+                                                  samples=samples, min_total=minmax, max_total=minmax, hidden_layers=hidden_layer,
+                                                  repeat=config["repeat"],
+                                                  ntraj=config["ntraj"],
+                                                  nsteps=config["nsteps"]
+                                )
+                                print("Elapsed time: ", time.time() - T0, "sec")
                             
 
 
@@ -234,6 +277,7 @@ config1 = {
     "output_dims": [3],
     "samples":1,
     "minmaxes":[0.1],
+    "repeat":1,
 }
 
 config2 = {
@@ -247,6 +291,7 @@ config2 = {
     "output_dims": [3],
     "samples":1,
     "minmaxes":[0.1],
+    "repeat":1,
 }
 
 config3 = {
@@ -260,9 +305,45 @@ config3 = {
     "output_dims": [3],
     "samples":1,
     "minmaxes":[0.1],
+    "repeat":1,
 }
 
-run(config1)
-run(config2)
-run(config3)
+# Figure 3
+config4 = {
+    "exp": 4,
+    "losstypes": ["nll", "prp"],
+    "labels": ["1AB"],
+    "modeltypes": ["mlp"],
+    "in_dims": [1],
+    "hidden_dims": [100],
+    "hidden_layers": [0,5,10],
+    "output_dims": [3],
+    "samples":1,
+    "minmaxes":[0.1],
+    "repeat":1,
+    "ntraj":3,
+    "nsteps":20,
+}
+
+config5 = {
+    "exp": 5,
+    "losstypes": ["nll", "prp"],
+    "labels": ["1AB"],
+    "modeltypes": ["logit"],
+    "in_dims": [1],
+    "hidden_dims": [100],
+    "hidden_layers": [0],
+    "output_dims": [3],
+    "samples":1,
+    "minmaxes":[0.1],
+    "repeat":1,
+    "ntraj":3,
+    "nsteps":20,
+}
+
+
+# run(config1)
+# run(config2)
+# run(config3)
+run(config4)
 

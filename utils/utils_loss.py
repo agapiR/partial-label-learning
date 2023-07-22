@@ -312,3 +312,22 @@ def lwc_loss(outputs, partialY, confidence, index, lw_weight, lw_weight0, epoch_
 
     average_loss = lw_weight0 * average_loss1 + lw_weight * average_loss2
     return average_loss, average_loss1, lw_weight * average_loss2
+
+
+
+class meritocratic_loss(torch.nn.Module):
+    def __init__(self, beta=0.5):
+        super(meritocratic_loss, self).__init__()
+        self.beta = beta
+
+    def forward(self, inputs, targets):
+        probs = F.softmax(inputs, dim=1) * targets
+        q_mml = F.normalize(probs, p=1, dim=1)
+        q_beta = q_mml ** self.beta
+        q_beta = F.normalize(q_beta, p=1, dim=1)
+        logprobs = F.log_softmax(inputs, dim=1)
+        loss = - q_beta.detach() * targets * logprobs
+        loss = loss.mean()
+        return loss
+
+

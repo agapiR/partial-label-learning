@@ -17,7 +17,7 @@ from utils.utils_loss import (rc_loss, cc_loss, lws_loss,
                               log_prp_Loss as prp_loss, 
                               h_prp_Loss as h_prp_loss, 
                               joint_prp_on_logits as ll_loss,
-                              bi_prp_loss, bi_prp_nll_loss, nll_loss, democracy_loss)
+                              bi_prp_loss, bi_prp_nll_loss, nll_loss, democracy_loss, meritocratic_loss)
 
 # TODO: read as argument
 NO_IMPROVEMENT_TOLERANCE=20
@@ -104,6 +104,7 @@ parser.add_argument('-num_groups',
                     required=False)
 parser.add_argument('-clip', help='gradient clipping', type=float, default=None, required=False)
 parser.add_argument('-logit_decay', help='L2 loss on the logits', type=float, default=0.0, required=False)
+parser.add_argument('-beta', help='Beta parameter for beta-meritocratic loss.', type=float, default=0.5, required=False)
 
 ## Synthetic data hyperparameters
 parser.add_argument('-prt', help='partial rate.', default=0.1, type=float, required=False)                  
@@ -229,6 +230,8 @@ elif args.lo == 'nll':
     loss_fn = nll_loss()
 elif args.lo == 'democracy':
     loss_fn = democracy_loss()
+elif args.lo == 'merit':
+    loss_fn = meritocratic_loss(args.beta)
 
 if args.mo == 'mlp':
     model = Mlp(n_inputs=dim, n_outputs=K)
@@ -251,6 +254,7 @@ elif args.mo == "resnet18":
 
 model = model.to(device)
 print(model)
+print("Parameters: ", sum(p.numel() for p in model.parameters() if p.requires_grad))
 
 optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.wd, momentum=0.9)
 # optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.wd)
